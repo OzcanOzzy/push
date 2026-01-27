@@ -47,6 +47,7 @@ jobs:
             cd "$DEPLOY_PATH"
             cd api
             npm ci
+            npx prisma generate
             npm run build
             cd ../web
             npm ci
