@@ -75,6 +75,9 @@ export default function AdminDashboardPage() {
               <Link className="btn btn-outline" href="/admin/cities">
                 Şehirler
               </Link>
+              <Link className="btn btn-outline" href="/admin/listing-attributes">
+                İlan Özellikleri
+              </Link>
               <Link className="btn btn-outline" href="/admin/requests">
                 Talepler
               </Link>

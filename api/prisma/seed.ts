@@ -1,6 +1,13 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
-import { Prisma, PrismaClient, ListingCategory, ListingStatus, Role } from "@prisma/client";
+import {
+  ListingAttributeType,
+  ListingCategory,
+  ListingStatus,
+  Prisma,
+  PrismaClient,
+  Role,
+} from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
 
@@ -135,6 +142,181 @@ async function main() {
       backgroundColor: "#e9e9f0",
       textColor: "#122033",
     },
+  });
+
+  await prisma.listingAttributeDefinition.createMany({
+    data: [
+      {
+        category: ListingCategory.HOUSING,
+        key: "rooms",
+        label: "Oda Sayısı",
+        type: ListingAttributeType.SELECT,
+        options: ["1+0", "1+1", "2+1", "3+1", "4+1", "5+1", "6+1"],
+        sortOrder: 1,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "bathrooms",
+        label: "Banyo",
+        type: ListingAttributeType.NUMBER,
+        sortOrder: 2,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "floor",
+        label: "Bulunduğu Kat",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 3,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "buildingAge",
+        label: "Bina Yaşı",
+        type: ListingAttributeType.NUMBER,
+        sortOrder: 4,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "heating",
+        label: "Isıtma",
+        type: ListingAttributeType.SELECT,
+        options: ["Doğalgaz", "Merkezi", "Soba", "Klima"],
+        sortOrder: 5,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "furnished",
+        label: "Eşyalı",
+        type: ListingAttributeType.BOOLEAN,
+        sortOrder: 6,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "balcony",
+        label: "Balkon",
+        type: ListingAttributeType.BOOLEAN,
+        sortOrder: 7,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "elevator",
+        label: "Asansör",
+        type: ListingAttributeType.BOOLEAN,
+        sortOrder: 8,
+      },
+      {
+        category: ListingCategory.HOUSING,
+        key: "parking",
+        label: "Otopark",
+        type: ListingAttributeType.BOOLEAN,
+        sortOrder: 9,
+      },
+      {
+        category: ListingCategory.LAND,
+        key: "zoningStatus",
+        label: "İmar Durumu",
+        type: ListingAttributeType.SELECT,
+        options: ["İmarlı", "İmarsız", "Ticari", "Konut"],
+        sortOrder: 1,
+      },
+      {
+        category: ListingCategory.LAND,
+        key: "block",
+        label: "Ada",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 2,
+      },
+      {
+        category: ListingCategory.LAND,
+        key: "parcel",
+        label: "Parsel",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 3,
+      },
+      {
+        category: ListingCategory.LAND,
+        key: "gabari",
+        label: "Gabari",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 4,
+      },
+      {
+        category: ListingCategory.COMMERCIAL,
+        key: "usageType",
+        label: "Kullanım Tipi",
+        type: ListingAttributeType.SELECT,
+        options: ["Dükkan", "Ofis", "Depo", "İşyeri"],
+        sortOrder: 1,
+      },
+      {
+        category: ListingCategory.COMMERCIAL,
+        key: "floor",
+        label: "Kat",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 2,
+      },
+      {
+        category: ListingCategory.COMMERCIAL,
+        key: "ceilingHeight",
+        label: "Tavan Yüksekliği",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 3,
+      },
+      {
+        category: ListingCategory.TRANSFER,
+        key: "businessType",
+        label: "İşletme Türü",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 1,
+      },
+      {
+        category: ListingCategory.TRANSFER,
+        key: "employeeCount",
+        label: "Personel Sayısı",
+        type: ListingAttributeType.NUMBER,
+        sortOrder: 2,
+      },
+      {
+        category: ListingCategory.FIELD,
+        key: "soilType",
+        label: "Toprak Tipi",
+        type: ListingAttributeType.TEXT,
+        sortOrder: 1,
+      },
+      {
+        category: ListingCategory.FIELD,
+        key: "irrigation",
+        label: "Sulama",
+        type: ListingAttributeType.SELECT,
+        options: ["Var", "Yok"],
+        sortOrder: 2,
+      },
+      {
+        category: ListingCategory.GARDEN,
+        key: "water",
+        label: "Su",
+        type: ListingAttributeType.SELECT,
+        options: ["Var", "Yok"],
+        sortOrder: 1,
+      },
+      {
+        category: ListingCategory.GARDEN,
+        key: "electricity",
+        label: "Elektrik",
+        type: ListingAttributeType.SELECT,
+        options: ["Var", "Yok"],
+        sortOrder: 2,
+      },
+      {
+        category: ListingCategory.HOBBY_GARDEN,
+        key: "fence",
+        label: "Çevrili",
+        type: ListingAttributeType.SELECT,
+        options: ["Var", "Yok"],
+        sortOrder: 1,
+      },
+    ],
+    skipDuplicates: true,
   });
 
   const listingOne = await prisma.listing.create({

@@ -46,6 +46,17 @@ type ListingImage = {
   sortOrder?: number | null;
 };
 
+type ListingAttributeDefinition = {
+  id: string;
+  category: string;
+  key: string;
+  label: string;
+  type: "TEXT" | "NUMBER" | "SELECT" | "BOOLEAN";
+  options?: string[] | null;
+  isRequired?: boolean | null;
+  sortOrder?: number | null;
+};
+
 type ListingDetail = Listing & {
   description: string;
   category?: string | null;
@@ -55,6 +66,7 @@ type ListingDetail = Listing & {
   districtId?: string | null;
   neighborhoodId?: string | null;
   branchId?: string | null;
+  attributes?: Record<string, unknown> | null;
   images?: ListingImage[] | null;
 };
 
@@ -81,6 +93,12 @@ export default function AdminListingsPage() {
   const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
   const [editDistricts, setEditDistricts] = useState<District[]>([]);
   const [editNeighborhoods, setEditNeighborhoods] = useState<Neighborhood[]>([]);
+  const [attributeDefinitions, setAttributeDefinitions] = useState<
+    ListingAttributeDefinition[]
+  >([]);
+  const [editAttributeDefinitions, setEditAttributeDefinitions] = useState<
+    ListingAttributeDefinition[]
+  >([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [listings, setListings] = useState<Listing[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -100,6 +118,7 @@ export default function AdminListingsPage() {
     districtId: "",
     neighborhoodId: "",
     branchId: "",
+    attributes: {} as Record<string, string | boolean>,
   });
   const [editError, setEditError] = useState("");
   const [editStatus, setEditStatus] = useState<"idle" | "loading" | "saving">(
@@ -123,6 +142,7 @@ export default function AdminListingsPage() {
     districtId: "",
     neighborhoodId: "",
     branchId: "",
+    attributes: {} as Record<string, string | boolean>,
   });
 
   const availableBranches = useMemo(() => {
@@ -162,6 +182,55 @@ export default function AdminListingsPage() {
     loadData();
   }, []);
 
+  const renderAttributeField = (
+    def: ListingAttributeDefinition,
+    value: string | boolean | undefined,
+    onChange: (next: string | boolean) => void,
+  ) => {
+    const normalizedValue =
+      value === undefined || value === null ? "" : String(value);
+
+    if (def.type === "BOOLEAN") {
+      return (
+        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+          <input
+            type="checkbox"
+            checked={Boolean(value)}
+            onChange={(event) => onChange(event.target.checked)}
+          />
+          {def.label}
+        </label>
+      );
+    }
+
+    if (def.type === "SELECT") {
+      return (
+        <select
+          className="search-input"
+          value={normalizedValue}
+          onChange={(event) => onChange(event.target.value)}
+        >
+          <option value="">{def.label}</option>
+          {(def.options ?? []).map((option) => (
+            <option key={option} value={option}>
+              {option}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    return (
+      <input
+        className="search-input"
+        type={def.type === "NUMBER" ? "number" : "text"}
+        placeholder={def.label}
+        value={normalizedValue}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    );
+  };
+
   useEffect(() => {
     if (!formState.cityId) {
       setDistricts([]);
@@ -186,6 +255,20 @@ export default function AdminListingsPage() {
       .then((data) => setNeighborhoods(data))
       .catch(() => setNeighborhoods([]));
   }, [formState.districtId]);
+
+  useEffect(() => {
+    if (!formState.category) {
+      setAttributeDefinitions([]);
+      setFormState((prev) => ({ ...prev, attributes: {} }));
+      return;
+    }
+    fetchJson<ListingAttributeDefinition[]>(
+      `/listing-attributes?category=${formState.category}`,
+      { cache: "no-store" },
+    )
+      .then((data) => setAttributeDefinitions(data))
+      .catch(() => setAttributeDefinitions([]));
+  }, [formState.category]);
 
   useEffect(() => {
     if (!editState.cityId) {
@@ -213,6 +296,20 @@ export default function AdminListingsPage() {
       .catch(() => setEditNeighborhoods([]));
   }, [editState.districtId]);
 
+  useEffect(() => {
+    if (!editState.category) {
+      setEditAttributeDefinitions([]);
+      setEditState((prev) => ({ ...prev, attributes: {} }));
+      return;
+    }
+    fetchJson<ListingAttributeDefinition[]>(
+      `/listing-attributes?category=${editState.category}`,
+      { cache: "no-store" },
+    )
+      .then((data) => setEditAttributeDefinitions(data))
+      .catch(() => setEditAttributeDefinitions([]));
+  }, [editState.category]);
+
   const handleChange = (field: string, value: string | boolean) => {
     setFormState((prev) => ({
       ...prev,
@@ -234,6 +331,26 @@ export default function AdminListingsPage() {
         : field === "districtId"
           ? { neighborhoodId: "" }
           : {}),
+    }));
+  };
+
+  const handleAttributeChange = (key: string, value: string | boolean) => {
+    setFormState((prev) => ({
+      ...prev,
+      attributes: {
+        ...(prev.attributes ?? {}),
+        [key]: value,
+      },
+    }));
+  };
+
+  const handleEditAttributeChange = (key: string, value: string | boolean) => {
+    setEditState((prev) => ({
+      ...prev,
+      attributes: {
+        ...(prev.attributes ?? {}),
+        [key]: value,
+      },
     }));
   };
 
@@ -262,6 +379,7 @@ export default function AdminListingsPage() {
         districtId: listing.districtId ?? "",
         neighborhoodId: listing.neighborhoodId ?? "",
         branchId: listing.branchId ?? "",
+        attributes: (listing.attributes ?? {}) as Record<string, string | boolean>,
       });
     } catch (error) {
       setEditError("İlan bilgileri alınamadı.");
@@ -300,6 +418,7 @@ export default function AdminListingsPage() {
         districtId: formState.districtId || undefined,
         neighborhoodId: formState.neighborhoodId || undefined,
         branchId: formState.branchId,
+        attributes: formState.attributes ?? {},
       };
 
       const response = await fetch(`${API_BASE_URL}/listings`, {
@@ -327,6 +446,7 @@ export default function AdminListingsPage() {
         districtId: "",
         neighborhoodId: "",
         branchId: "",
+        attributes: {},
       });
       await loadData();
     } catch (error) {
@@ -359,6 +479,7 @@ export default function AdminListingsPage() {
       districtId: "",
       neighborhoodId: "",
       branchId: "",
+        attributes: {},
     });
   };
 
@@ -392,6 +513,7 @@ export default function AdminListingsPage() {
         districtId: editState.districtId || undefined,
         neighborhoodId: editState.neighborhoodId || undefined,
         branchId: editState.branchId,
+        attributes: editState.attributes ?? {},
       };
 
       const response = await fetch(`${API_BASE_URL}/listings/${editId}`, {
@@ -685,6 +807,20 @@ export default function AdminListingsPage() {
                     handleChange("propertyType", event.target.value)
                   }
                 />
+                {attributeDefinitions.length > 0 ? (
+                  <div style={{ display: "grid", gap: 10 }}>
+                    <div style={{ fontWeight: 600 }}>Özellikler</div>
+                    {attributeDefinitions.map((def) => (
+                      <div key={def.id}>
+                        {renderAttributeField(
+                          def,
+                          formState.attributes?.[def.key],
+                          (next) => handleAttributeChange(def.key, next),
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
                 <select
                   className="search-input"
                   value={formState.cityId}
@@ -836,6 +972,20 @@ export default function AdminListingsPage() {
                         handleEditChange("propertyType", event.target.value)
                       }
                     />
+                    {editAttributeDefinitions.length > 0 ? (
+                      <div style={{ display: "grid", gap: 10 }}>
+                        <div style={{ fontWeight: 600 }}>Özellikler</div>
+                        {editAttributeDefinitions.map((def) => (
+                          <div key={def.id}>
+                            {renderAttributeField(
+                              def,
+                              editState.attributes?.[def.key],
+                              (next) => handleEditAttributeChange(def.key, next),
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
                     <select
                       className="search-input"
                       value={editState.cityId}

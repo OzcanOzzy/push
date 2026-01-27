@@ -10,6 +10,7 @@ import { PrismaModule } from './prisma/prisma.module';
 import { RequestsModule } from './requests/requests.module';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { SettingsModule } from './settings/settings.module';
+import { ListingAttributesModule } from './listing-attributes/listing-attributes.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { SettingsModule } from './settings/settings.module';
     ConsultantsModule,
     DistrictsModule,
     ListingsModule,
+    ListingAttributesModule,
     NeighborhoodsModule,
     RequestsModule,
     SettingsModule,

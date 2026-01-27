@@ -34,6 +34,13 @@ enum ListingCategory {
   HOBBY_GARDEN
 }
 
+enum ListingAttributeType {
+  TEXT
+  NUMBER
+  SELECT
+  BOOLEAN
+}
+
 enum RequestStatus {
   NEW
   IN_PROGRESS
@@ -171,6 +178,22 @@ model Listing {
 
   @@index([status, cityId])
   @@index([branchId])
+}
+
+model ListingAttributeDefinition {
+  id         String               @id @default(cuid())
+  category   ListingCategory
+  key        String
+  label      String
+  type       ListingAttributeType
+  options    Json?
+  isRequired Boolean              @default(false)
+  sortOrder  Int                  @default(0)
+  createdAt  DateTime             @default(now())
+  updatedAt  DateTime             @updatedAt
+
+  @@unique([category, key])
+  @@index([category, sortOrder])
 }
 
 model ListingImage {
