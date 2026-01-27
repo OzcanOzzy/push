@@ -9,6 +9,7 @@ import { NeighborhoodsModule } from './neighborhoods/neighborhoods.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { RequestsModule } from './requests/requests.module';
 import { RolesGuard } from './auth/guards/roles.guard';
+import { SettingsModule } from './settings/settings.module';
 
 @Module({
   imports: [
@@ -21,6 +22,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
     ListingsModule,
     NeighborhoodsModule,
     RequestsModule,
+    SettingsModule,
   ],
   providers: [RolesGuard],
 })

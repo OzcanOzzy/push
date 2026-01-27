@@ -224,3 +224,21 @@ model ConsultantRequest {
 
   @@index([consultantId, status])
 }
+
+model SiteSetting {
+  id              String   @id @default("default")
+  siteName        String
+  logoUrl         String?
+  ownerName       String?
+  ownerTitle      String?
+  phoneNumber     String?
+  whatsappNumber  String?
+  email           String?
+  supportEmail    String?
+  primaryColor    String?
+  accentColor     String?
+  backgroundColor String?
+  textColor       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}

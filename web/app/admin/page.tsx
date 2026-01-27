@@ -78,7 +78,9 @@ export default function AdminDashboardPage() {
               <Link className="btn btn-outline" href="/admin/requests">
                 Talepler
               </Link>
-              <button className="btn btn-outline">Sayfa Yönetimi</button>
+              <Link className="btn btn-outline" href="/admin/settings">
+                Site Ayarları
+              </Link>
             </div>
           </aside>
           <section>

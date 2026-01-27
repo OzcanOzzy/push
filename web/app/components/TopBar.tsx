@@ -1,6 +1,10 @@
+"use client";
+
 import Link from "next/link";
+import { useSettings } from "./SettingsProvider";
 
 export default function TopBar() {
+  const settings = useSettings();
   return (
     <div className="topbar">
       <div className="container topbar-inner">
@@ -13,8 +17,8 @@ export default function TopBar() {
         </div>
         <div className="topbar-links">
           <span>WhatsApp</span>
-          <span>+90 543 306 14 99</span>
-          <span>emlaknomiozcan@gmail.com</span>
+          <span>{settings.whatsappNumber}</span>
+          <span>{settings.email}</span>
         </div>
       </div>
     </div>

@@ -118,6 +118,25 @@ async function main() {
     },
   });
 
+  await prisma.siteSetting.upsert({
+    where: { id: "default" },
+    update: {},
+    create: {
+      id: "default",
+      siteName: "Emlaknomi",
+      ownerName: "Özcan Aktaş",
+      ownerTitle: "Danışman",
+      phoneNumber: "0543 306 14 99",
+      whatsappNumber: "0543 306 14 99",
+      email: "emlaknomiozcan@gmail.com",
+      supportEmail: "destek@ozcanaktas.com",
+      primaryColor: "#1a436e",
+      accentColor: "#e20b0b",
+      backgroundColor: "#e9e9f0",
+      textColor: "#122033",
+    },
+  });
+
   const listingOne = await prisma.listing.create({
     data: {
       title: "Site İçinde 3+1 Daire",
