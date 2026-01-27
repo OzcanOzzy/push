@@ -26,6 +26,10 @@ export class CreateListingAttributeDto {
   isRequired?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  allowsMultiple?: boolean;
+
+  @IsOptional()
   @IsInt()
   @Min(0)
   sortOrder?: number;

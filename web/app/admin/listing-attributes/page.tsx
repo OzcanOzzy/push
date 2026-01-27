@@ -11,6 +11,7 @@ type ListingAttributeDefinition = {
   label: string;
   type: "TEXT" | "NUMBER" | "SELECT" | "BOOLEAN";
   options?: string[] | null;
+  allowsMultiple?: boolean | null;
   isRequired?: boolean | null;
   sortOrder?: number | null;
 };
@@ -45,6 +46,7 @@ export default function AdminListingAttributesPage() {
     label: "",
     type: "TEXT",
     options: "",
+    allowsMultiple: false,
     isRequired: false,
     sortOrder: "0",
   });
@@ -108,6 +110,7 @@ export default function AdminListingAttributesPage() {
             label: formState.label,
             type: formState.type,
             options,
+            allowsMultiple: formState.allowsMultiple,
             isRequired: formState.isRequired,
             sortOrder: Number(formState.sortOrder || 0),
           }),
@@ -124,6 +127,7 @@ export default function AdminListingAttributesPage() {
         label: "",
         type: "TEXT",
         options: "",
+        allowsMultiple: false,
         isRequired: false,
         sortOrder: "0",
       });
@@ -142,6 +146,7 @@ export default function AdminListingAttributesPage() {
       label: item.label,
       type: item.type,
       options: item.options?.join(", ") ?? "",
+      allowsMultiple: Boolean(item.allowsMultiple),
       isRequired: Boolean(item.isRequired),
       sortOrder: String(item.sortOrder ?? 0),
     });
@@ -275,6 +280,17 @@ export default function AdminListingAttributesPage() {
                 onChange={(event) => handleChange("options", event.target.value)}
                 disabled={formState.type !== "SELECT"}
               />
+              <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
+                <input
+                  type="checkbox"
+                  checked={formState.allowsMultiple}
+                  onChange={(event) =>
+                    handleChange("allowsMultiple", event.target.checked)
+                  }
+                  disabled={formState.type !== "SELECT"}
+                />
+                Çoklu seçim
+              </label>
               <input
                 className="search-input"
                 placeholder="Sıra"
@@ -318,6 +334,11 @@ export default function AdminListingAttributesPage() {
                         <div style={{ color: "var(--color-muted)" }}>
                           {item.type}
                         </div>
+                        {item.allowsMultiple ? (
+                          <div style={{ color: "var(--color-muted)" }}>
+                            Çoklu seçim
+                          </div>
+                        ) : null}
                         <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                           <button
                             className="btn btn-outline"

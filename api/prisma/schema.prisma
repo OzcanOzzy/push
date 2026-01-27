@@ -187,6 +187,7 @@ model ListingAttributeDefinition {
   label      String
   type       ListingAttributeType
   options    Json?
+  allowsMultiple Boolean          @default(false)
   isRequired Boolean              @default(false)
   sortOrder  Int                  @default(0)
   createdAt  DateTime             @default(now())

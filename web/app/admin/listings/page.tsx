@@ -53,6 +53,7 @@ type ListingAttributeDefinition = {
   label: string;
   type: "TEXT" | "NUMBER" | "SELECT" | "BOOLEAN";
   options?: string[] | null;
+  allowsMultiple?: boolean | null;
   isRequired?: boolean | null;
   sortOrder?: number | null;
 };
@@ -62,6 +63,8 @@ type ListingDetail = Listing & {
   category?: string | null;
   propertyType?: string | null;
   isOpportunity?: boolean | null;
+  areaGross?: string | null;
+  areaNet?: string | null;
   cityId?: string | null;
   districtId?: string | null;
   neighborhoodId?: string | null;
@@ -113,12 +116,14 @@ export default function AdminListingsPage() {
     category: "HOUSING",
     price: "",
     propertyType: "",
+    areaGross: "",
+    areaNet: "",
     isOpportunity: false,
     cityId: "",
     districtId: "",
     neighborhoodId: "",
     branchId: "",
-    attributes: {} as Record<string, string | boolean>,
+    attributes: {} as Record<string, string | boolean | string[]>,
   });
   const [editError, setEditError] = useState("");
   const [editStatus, setEditStatus] = useState<"idle" | "loading" | "saving">(
@@ -137,12 +142,14 @@ export default function AdminListingsPage() {
     category: "HOUSING",
     price: "",
     propertyType: "",
+    areaGross: "",
+    areaNet: "",
     isOpportunity: false,
     cityId: "",
     districtId: "",
     neighborhoodId: "",
     branchId: "",
-    attributes: {} as Record<string, string | boolean>,
+    attributes: {} as Record<string, string | boolean | string[]>,
   });
 
   const availableBranches = useMemo(() => {
@@ -184,8 +191,8 @@ export default function AdminListingsPage() {
 
   const renderAttributeField = (
     def: ListingAttributeDefinition,
-    value: string | boolean | undefined,
-    onChange: (next: string | boolean) => void,
+    value: string | boolean | string[] | undefined,
+    onChange: (next: string | boolean | string[]) => void,
   ) => {
     const normalizedValue =
       value === undefined || value === null ? "" : String(value);
@@ -200,6 +207,31 @@ export default function AdminListingsPage() {
           />
           {def.label}
         </label>
+      );
+    }
+
+    if (def.type === "SELECT" && def.allowsMultiple) {
+      const selected = Array.isArray(value) ? value : [];
+      return (
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontWeight: 600 }}>{def.label}</div>
+          {(def.options ?? []).map((option) => (
+            <label key={option} style={{ display: "flex", gap: 8 }}>
+              <input
+                type="checkbox"
+                checked={selected.includes(option)}
+                onChange={(event) => {
+                  if (event.target.checked) {
+                    onChange([...selected, option]);
+                  } else {
+                    onChange(selected.filter((item) => item !== option));
+                  }
+                }}
+              />
+              {option}
+            </label>
+          ))}
+        </div>
       );
     }
 
@@ -334,7 +366,10 @@ export default function AdminListingsPage() {
     }));
   };
 
-  const handleAttributeChange = (key: string, value: string | boolean) => {
+  const handleAttributeChange = (
+    key: string,
+    value: string | boolean | string[],
+  ) => {
     setFormState((prev) => ({
       ...prev,
       attributes: {
@@ -344,7 +379,10 @@ export default function AdminListingsPage() {
     }));
   };
 
-  const handleEditAttributeChange = (key: string, value: string | boolean) => {
+  const handleEditAttributeChange = (
+    key: string,
+    value: string | boolean | string[],
+  ) => {
     setEditState((prev) => ({
       ...prev,
       attributes: {
@@ -374,6 +412,8 @@ export default function AdminListingsPage() {
         category: listing.category ?? "HOUSING",
         price: listing.price ? String(listing.price) : "",
         propertyType: listing.propertyType ?? "",
+        areaGross: listing.areaGross ? String(listing.areaGross) : "",
+        areaNet: listing.areaNet ? String(listing.areaNet) : "",
         isOpportunity: Boolean(listing.isOpportunity),
         cityId: listing.cityId ?? "",
         districtId: listing.districtId ?? "",
@@ -412,6 +452,8 @@ export default function AdminListingsPage() {
         category: formState.category,
         propertyType: formState.propertyType || undefined,
         price: formState.price ? Number(formState.price) : undefined,
+        areaGross: formState.areaGross ? Number(formState.areaGross) : undefined,
+        areaNet: formState.areaNet ? Number(formState.areaNet) : undefined,
         currency: "TRY",
         isOpportunity: formState.isOpportunity,
         cityId: formState.cityId,
@@ -441,6 +483,8 @@ export default function AdminListingsPage() {
         category: "HOUSING",
         price: "",
         propertyType: "",
+        areaGross: "",
+        areaNet: "",
         isOpportunity: false,
         cityId: "",
         districtId: "",
@@ -474,6 +518,8 @@ export default function AdminListingsPage() {
       category: "HOUSING",
       price: "",
       propertyType: "",
+        areaGross: "",
+        areaNet: "",
       isOpportunity: false,
       cityId: "",
       districtId: "",
@@ -507,6 +553,8 @@ export default function AdminListingsPage() {
         category: editState.category,
         propertyType: editState.propertyType || undefined,
         price: editState.price ? Number(editState.price) : undefined,
+        areaGross: editState.areaGross ? Number(editState.areaGross) : undefined,
+        areaNet: editState.areaNet ? Number(editState.areaNet) : undefined,
         currency: "TRY",
         isOpportunity: editState.isOpportunity,
         cityId: editState.cityId,
@@ -801,6 +849,20 @@ export default function AdminListingsPage() {
                 />
                 <input
                   className="search-input"
+                  placeholder="Brüt m²"
+                  type="number"
+                  value={formState.areaGross}
+                  onChange={(event) => handleChange("areaGross", event.target.value)}
+                />
+                <input
+                  className="search-input"
+                  placeholder="Net m²"
+                  type="number"
+                  value={formState.areaNet}
+                  onChange={(event) => handleChange("areaNet", event.target.value)}
+                />
+                <input
+                  className="search-input"
                   placeholder="Emlak Tipi (Daire, Dükkan...)"
                   value={formState.propertyType}
                   onChange={(event) =>
@@ -963,6 +1025,24 @@ export default function AdminListingsPage() {
                       type="number"
                       value={editState.price}
                       onChange={(event) => handleEditChange("price", event.target.value)}
+                    />
+                    <input
+                      className="search-input"
+                      placeholder="Brüt m²"
+                      type="number"
+                      value={editState.areaGross}
+                      onChange={(event) =>
+                        handleEditChange("areaGross", event.target.value)
+                      }
+                    />
+                    <input
+                      className="search-input"
+                      placeholder="Net m²"
+                      type="number"
+                      value={editState.areaNet}
+                      onChange={(event) =>
+                        handleEditChange("areaNet", event.target.value)
+                      }
                     />
                     <input
                       className="search-input"
