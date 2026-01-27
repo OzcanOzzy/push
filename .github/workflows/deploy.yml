@@ -1,0 +1,55 @@
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Sync files to server
+        uses: burnett01/rsync-deployments@5.2
+        with:
+          switches: >-
+            -az
+            --exclude=.git/
+            --exclude=.github/
+            --exclude=api/node_modules/
+            --exclude=api/dist/
+            --exclude=api/uploads/
+            --exclude=api/.env
+            --exclude=web/node_modules/
+            --exclude=web/.next/
+            --exclude=web/.env
+          path: ./
+          remote_path: ${{ secrets.DEPLOY_PATH }}
+          remote_host: ${{ secrets.SSH_HOST }}
+          remote_user: ${{ secrets.SSH_USER }}
+          remote_port: ${{ secrets.SSH_PORT }}
+          remote_key: ${{ secrets.SSH_KEY }}
+
+      - name: Build and restart services
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USER }}
+          port: ${{ secrets.SSH_PORT }}
+          key: ${{ secrets.SSH_KEY }}
+          envs: DEPLOY_PATH
+          script: |
+            set -e
+            cd "$DEPLOY_PATH"
+            cd api
+            npm ci
+            npm run build
+            cd ../web
+            npm ci
+            npm run build
+            pm2 restart ozcanaktasweb-api --update-env
+            pm2 restart ozcanaktasweb-web --update-env
