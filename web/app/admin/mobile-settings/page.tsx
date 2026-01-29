@@ -120,6 +120,7 @@ export default function MobileSettingsPage() {
       const mobileSettings = {
         mobileHeaderPadding: settings.mobileHeaderPadding || null,
         mobileNavFontSize: settings.mobileNavFontSize ? Number(settings.mobileNavFontSize) : null,
+        mobileLogoRowPadding: settings.mobileLogoRowPadding || null,
         mobileLogoHeight: settings.mobileLogoHeight ? Number(settings.mobileLogoHeight) : null,
         mobileLogoSubSize: settings.mobileLogoSubSize ? Number(settings.mobileLogoSubSize) : null,
         mobileLogoAlign: settings.mobileLogoAlign || null,
@@ -144,7 +145,6 @@ export default function MobileSettingsPage() {
         mobileActionBorderRadius: settings.mobileActionBorderRadius ? Number(settings.mobileActionBorderRadius) : null,
         mobileListingColumns: settings.mobileListingColumns ? Number(settings.mobileListingColumns) : null,
         mobileListingGap: settings.mobileListingGap ? Number(settings.mobileListingGap) : null,
-        mobileSearchShow: Boolean(settings.mobileSearchShow),
       };
 
       const res = await fetch(`${API_BASE_URL}/settings`, {
