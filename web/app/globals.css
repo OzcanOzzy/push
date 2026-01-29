@@ -1587,12 +1587,13 @@ a {
   }
 
   /* Üst satırdaki Danışman Girişi - mobilde gizle (logo satırındaki kullanılacak) */
-  /* Danışman Girişi – mobilde en solda, kaydırmadan görünsün */
+  /* Danışman Girişi – mobilde sağda */
   .corp-nav-row .corp-consultant-btn {
-    order: -1;
+    order: 99;
     flex-shrink: 0;
     padding: 6px 10px;
     font-size: 11px;
+    margin-left: auto;
   }
 
 
@@ -1633,8 +1634,12 @@ a {
     text-align: center;
   }
 
-  .corp-logo-img {
-    height: var(--mobile-logo-height, 28px);
+  .corp-logo-img,
+  .corp-logo img {
+    height: 32px !important;
+    width: auto !important;
+    max-width: 100px !important;
+    max-height: 32px !important;
   }
 
   .corp-logo-sub {
