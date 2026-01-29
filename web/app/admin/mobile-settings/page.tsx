@@ -42,8 +42,6 @@ interface MobileSettings {
   // İlanlar
   mobileListingColumns: number;
   mobileListingGap: number;
-  // Genel
-  mobileSearchShow: boolean;
 }
 
 const defaultMobileSettings: MobileSettings = {
