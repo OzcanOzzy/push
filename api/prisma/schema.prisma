@@ -275,6 +275,7 @@ model SiteSetting {
   whatsappNumber  String?
   email           String?
   supportEmail    String?
+  address         String?
   primaryColor    String?
   accentColor     String?
   backgroundColor String?

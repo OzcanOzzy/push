@@ -8,6 +8,7 @@ export type SiteSettings = {
   whatsappNumber?: string | null;
   email?: string | null;
   supportEmail?: string | null;
+  address?: string | null;
   primaryColor?: string | null;
   accentColor?: string | null;
   backgroundColor?: string | null;
