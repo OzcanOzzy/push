@@ -48,6 +48,7 @@ export default function ListingsMap({ listings }: ListingsMapProps) {
       setL(leaflet.default);
     });
     // Import Leaflet CSS
+    // @ts-ignore - CSS import
     import("leaflet/dist/leaflet.css");
   }, []);
 

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, Suspense } from "react";
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -48,7 +48,7 @@ const getLocationText = (listing: Listing) => {
   return parts.join(", ") || "Konum belirtilmemiş";
 };
 
-export default function AramaPage() {
+function AramaPageContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const [listings, setListings] = useState<Listing[]>([]);
@@ -236,18 +236,18 @@ export default function AramaPage() {
                         <span>{listing.areaGross} m²</span>
                       </div>
                     )}
-                    {listing.attributes?.rooms && (
+                    {listing.attributes?.rooms ? (
                       <div className="listing-feature">
                         <i className="fa-solid fa-bed"></i>
                         <span>{String(listing.attributes.rooms)}</span>
                       </div>
-                    )}
-                    {listing.attributes?.floor && (
+                    ) : null}
+                    {listing.attributes?.floor ? (
                       <div className="listing-feature">
                         <i className="fa-solid fa-building"></i>
                         <span>{String(listing.attributes.floor)}</span>
                       </div>
-                    )}
+                    ) : null}
                   </div>
                 </div>
               </Link>
@@ -256,5 +256,13 @@ export default function AramaPage() {
         )}
       </div>
     </main>
+  );
+}
+
+export default function AramaPage() {
+  return (
+    <Suspense fallback={<div style={{ padding: "2rem", textAlign: "center" }}>Yükleniyor...</div>}>
+      <AramaPageContent />
+    </Suspense>
   );
 }

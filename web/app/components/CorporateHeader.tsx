@@ -158,10 +158,10 @@ export default function CorporateHeader() {
           {navLinks.map((link) => {
             const linkStyle: React.CSSProperties = { ...navLinkStyle };
             if ("textColor" in link && link.textColor) {
-              linkStyle.color = link.textColor;
+              linkStyle.color = String(link.textColor);
             }
             if ("bgColor" in link && link.bgColor) {
-              linkStyle.backgroundColor = link.bgColor;
+              linkStyle.backgroundColor = String(link.bgColor);
               linkStyle.borderRadius = "4px";
               linkStyle.padding = "6px 12px";
             }
@@ -172,7 +172,7 @@ export default function CorporateHeader() {
                 className={pathname === link.href ? "active" : ""}
                 style={linkStyle}
               >
-                {"icon" in link && link.icon && <i className={link.icon} style={{ marginRight: 6 }}></i>}
+                {"icon" in link && link.icon ? <i className={String(link.icon)} style={{ marginRight: 6 }}></i> : null}
                 {link.label}
               </Link>
             );

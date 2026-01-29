@@ -17,6 +17,7 @@ const Marker = dynamic(
   { ssr: false }
 );
 const useMapEvents = dynamic(
+  // @ts-ignore - Dynamic import of hook
   () => import("react-leaflet").then((mod) => mod.useMapEvents),
   { ssr: false }
 ) as unknown as typeof import("react-leaflet").useMapEvents;
@@ -66,6 +67,7 @@ export default function LocationPicker({
     import("leaflet").then((leaflet) => {
       setL(leaflet.default);
     });
+    // @ts-ignore - CSS import
     import("leaflet/dist/leaflet.css");
   }, []);
 

@@ -179,7 +179,6 @@ export type SiteSettings = {
   mobileActionBorderRadius?: number | null;
   mobileListingColumns?: number | null;
   mobileListingGap?: number | null;
-  mobileSearchShow?: boolean | null;
 };
 
 export const defaultSettings: SiteSettings = {
