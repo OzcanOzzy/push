@@ -54,6 +54,7 @@ jobs:
             npx prisma migrate deploy
             npm run build
             cd ../web
+            rm -rf .next
             npm ci
             npm run build
             pm2 restart ozcanaktasweb-api --update-env
