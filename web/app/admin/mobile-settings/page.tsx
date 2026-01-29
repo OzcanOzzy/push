@@ -72,7 +72,6 @@ const defaultMobileSettings: MobileSettings = {
   mobileActionBorderRadius: 6,
   mobileListingColumns: 2,
   mobileListingGap: 8,
-  mobileSearchShow: true,
 };
 
 export default function MobileSettingsPage() {
