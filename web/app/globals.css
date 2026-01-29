@@ -287,6 +287,13 @@ a {
   background: rgba(255, 255, 255, 0.25);
 }
 
+/* Danışman Girişi mobil butonu: masaüstünde gizli */
+@media (min-width: 769px) {
+  .corp-consultant-btn-mobile {
+    display: none !important;
+  }
+}
+
 .corp-nav a {
   padding: 8px 14px;
   border-radius: 6px;
@@ -324,8 +331,9 @@ a {
 }
 
 .corp-logo-img {
-  height: 50px;
+  height: 72px;
   width: auto;
+  max-width: 220px;
   object-fit: contain;
 }
 
@@ -1578,10 +1586,15 @@ a {
     flex-shrink: 0;
   }
 
-  /* Danışman Girişi - Gizle mobilde */
-  .corp-consultant-btn {
-    display: none;
+  /* Üst satırdaki Danışman Girişi - mobilde gizle (logo satırındaki kullanılacak) */
+  /* Danışman Girişi – mobilde en solda, kaydırmadan görünsün */
+  .corp-nav-row .corp-consultant-btn {
+    order: -1;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    font-size: 11px;
   }
+
 
   /* ===== LOGO SATIRI - MOBİL ===== */
   .corp-logo-row {
@@ -2100,5 +2113,37 @@ a {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
+  }
+}
+
+/* === MOBİL DANIŞMAN GİRİŞİ (en sonda – çakışma olmasın) === */
+@media (max-width: 768px) {
+  .corp-consultant-btn-mobile {
+    display: inline-flex !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    color: #fff !important;
+    background: #0a4ea3 !important;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+    border-radius: 8px;
+    text-decoration: none !important;
+    white-space: nowrap;
+    position: fixed !important;
+    top: 12px !important;
+    right: 12px !important;
+    z-index: 99999 !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.3);
+  }
+  .corp-consultant-btn-mobile:hover {
+    background: #0d5bb8 !important;
+    color: #fff !important;
+  }
+  .corp-consultant-btn-mobile .corp-consultant-btn-mobile-text {
+    display: inline !important;
   }
 }

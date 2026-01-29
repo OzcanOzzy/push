@@ -1,0 +1,3 @@
+# Bu dosyayi ".upload-server" olarak kopyalayin ve icinde sadece sunucu adresini yazin.
+# Ornek: root@209.38.236.87
+# Sonra Cursor'da: npm run upload-files

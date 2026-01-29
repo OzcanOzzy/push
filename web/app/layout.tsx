@@ -21,8 +21,7 @@ async function getSettings(): Promise<SiteSettings & Record<string, unknown>> {
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
     const res = await fetch(`${API_URL}/settings`, { 
-      cache: "no-store",
-      next: { revalidate: 0 }
+      next: { revalidate: 60 }
     });
     if (!res.ok) return defaultSettings;
     const data = await res.json();
@@ -245,6 +244,39 @@ export default async function RootLayout({
         )}
         
         <SettingsProvider initialSettings={initialSettings}>
+          {/* MOBİL DANIŞMAN GİRİŞ BUTONU - LAYOUT SEVİYESİNDE */}
+          <a
+            href="/admin/login"
+            id="layout-mobile-btn"
+            style={{
+              display: "none",
+              position: "fixed",
+              top: 10,
+              right: 10,
+              zIndex: 99999,
+              alignItems: "center",
+              gap: 6,
+              padding: "8px 12px",
+              fontSize: 12,
+              fontWeight: 600,
+              color: "#fff",
+              background: "#0a4ea3",
+              border: "2px solid rgba(255,255,255,0.5)",
+              borderRadius: 8,
+              textDecoration: "none",
+              boxShadow: "0 2px 12px rgba(0,0,0,0.3)",
+            }}
+          >
+            <i className="fa-solid fa-user" style={{ marginRight: 6 }}></i>
+            Giriş
+          </a>
+          <style dangerouslySetInnerHTML={{ __html: `
+            @media (max-width: 768px) {
+              #layout-mobile-btn {
+                display: inline-flex !important;
+              }
+            }
+          `}} />
           <CorporateHeader />
           {children}
           <CorporateFooter />

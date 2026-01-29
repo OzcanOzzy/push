@@ -1,5 +1,6 @@
 .env
 .env.*
+.upload-server
 **/node_modules/
 **/.next/
 **/dist/

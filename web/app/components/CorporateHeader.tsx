@@ -197,9 +197,25 @@ export default function CorporateHeader() {
 
           <Link className="corp-logo" href="/" aria-label="Emlaknomi">
             {settings.logoUrl ? (
-              <img src={settings.logoUrl} alt={settings.siteName || "Emlaknomi"} className="corp-logo-img" />
+              <img
+                src={settings.logoUrl}
+                alt={settings.siteName || "Emlaknomi"}
+                className="corp-logo-img"
+                style={{
+                  ...(settings.logoWidth ? { width: `${settings.logoWidth}px` } : {}),
+                  ...(settings.logoHeight ? { height: `${settings.logoHeight}px` } : {}),
+                }}
+              />
             ) : (
-              <img src="/logo.png" alt="Emlaknomi" className="corp-logo-img" />
+              <img
+                src="/logo.png"
+                alt="Emlaknomi"
+                className="corp-logo-img"
+                style={{
+                  ...(settings.logoWidth ? { width: `${settings.logoWidth}px` } : {}),
+                  ...(settings.logoHeight ? { height: `${settings.logoHeight}px` } : {}),
+                }}
+              />
             )}
             {showLogoSubtitle && logoSubtitleText && (
               <div className="corp-logo-sub" style={logoSubtitleStyle}>

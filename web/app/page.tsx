@@ -18,6 +18,18 @@ const ListingsMap = dynamic(() => import("./components/ListingsMap"), {
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
+/** Production'da localhost URL'lerini API base URL ile değiştirir; relative path'leri tam URL yapar */
+function fullImageUrl(url: string | null | undefined): string {
+  if (!url || !url.trim()) return "";
+  const base = API_BASE_URL.replace(/\/$/, "");
+  if (/^https?:\/\//i.test(url)) {
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?/i.test(url))
+      return url.replace(/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?/i, base + "/");
+    return url;
+  }
+  return url.startsWith("/") ? base + url : base + "/" + url;
+}
+
 type CityButton = {
   id: string;
   name: string;
@@ -110,11 +122,11 @@ export default function Home() {
   // Combine default actions with API actions
   const actions = [...defaultActions, ...actionButtons];
 
-  // Get cover image for a listing
+  // Get cover image for a listing (production'da API URL ile)
   const getCoverImage = (listing: Listing) => {
     if (!listing.images || listing.images.length === 0) return "/placeholder-house.jpg";
     const cover = listing.images.find((img) => img.isCover) || listing.images[0];
-    return cover.url;
+    return fullImageUrl(cover.url) || "/placeholder-house.jpg";
   };
 
   // Format price
@@ -171,10 +183,11 @@ export default function Home() {
     mainBgStyle.backgroundColor = settings.mainBgColor;
   }
 
-  // Build banner style with opacity
+  // Build banner style with opacity (görsel yoksa varsayılan gradient)
   const bannerOpacity = settings.bannerOpacity ?? 1;
   const bannerStyle: React.CSSProperties = {
     ["--banner-image" as string]: heroImage ? `url('${heroImage}')` : "none",
+    ...(!heroImage ? { background: "linear-gradient(135deg, #0a4ea3 0%, #1a436e 100%)" } : {}),
   };
   if (settings.bannerWidth) {
     bannerStyle.maxWidth = `${settings.bannerWidth}px`;
@@ -245,13 +258,13 @@ export default function Home() {
                 borderRadius: settings.homeCityBtnBorderRadius ? `${settings.homeCityBtnBorderRadius}px` : undefined,
               }}
             >
-              <div
-                className="branch-media"
-                style={{
-                  backgroundImage: btn.imageUrl ? `url('${btn.imageUrl}')` : undefined,
-                  borderRadius: !isMobile && settings.homeCityBtnBorderRadius ? `${settings.homeCityBtnBorderRadius}px` : undefined,
-                }}
-              />
+                <div
+                  className="branch-media"
+                  style={{
+                    backgroundImage: btn.imageUrl ? `url('${fullImageUrl(btn.imageUrl)}')` : undefined,
+                    borderRadius: !isMobile && settings.homeCityBtnBorderRadius ? `${settings.homeCityBtnBorderRadius}px` : undefined,
+                  }}
+                />
               <div
                 className="branch-overlay"
                 style={{

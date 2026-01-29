@@ -1,0 +1,7 @@
+{
+  "name": "ozcanaktasweb",
+  "private": true,
+  "scripts": {
+    "upload-files": "powershell -ExecutionPolicy Bypass -File ./scripts/upload-to-server.ps1"
+  }
+}

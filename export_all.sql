@@ -1,0 +1,9 @@
+\copy "SiteSetting" TO '/tmp/SiteSetting.csv' WITH CSV HEADER;
+\copy "SocialLink" TO '/tmp/SocialLink.csv' WITH CSV HEADER;
+\copy "Banner" TO '/tmp/Banner.csv' WITH CSV HEADER;
+\copy "MenuItem" TO '/tmp/MenuItem.csv' WITH CSV HEADER;
+\copy "ActionButton" TO '/tmp/ActionButton.csv' WITH CSV HEADER;
+\copy "CityButton" TO '/tmp/CityButton.csv' WITH CSV HEADER;
+\copy "FooterItem" TO '/tmp/FooterItem.csv' WITH CSV HEADER;
+\copy "Branch" TO '/tmp/Branch.csv' WITH CSV HEADER;
+\copy "ListingLabel" TO '/tmp/ListingLabel.csv' WITH CSV HEADER;
