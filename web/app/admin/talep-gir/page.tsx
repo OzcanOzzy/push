@@ -3,8 +3,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 
+// --- TYPES ---
+interface Item {
+  id: number;
+  adNo: number;
+  text: string;
+  phone: string;
+  contactName: string;
+  date: string;
+  price: number;
+  alarmTime: string;
+  alarmActive: boolean;
+  tags: string[];
+  cityId: string | null;
+  cityName: string;
+  dealType: string;
+}
+
+interface Category {
+  id: string;
+  title: string;
+  keywords: string;
+  items: Item[];
+  icon: string;
+}
+
+interface City {
+  id: string;
+  title: string;
+  keywords: string;
+}
+
 // --- VARSAYILAN VERİLER ---
-const defaultCategories = [
+const defaultCategories: Category[] = [
   { id: 'cat_randevu', title: 'Randevular', keywords: 'randevu,görüşme,buluşma,toplantı,yarın,saat,gösterilecek,gösterim,sunum,bakılacak', items: [], icon: 'calendar' },
   { id: 'cat_todo', title: 'Yapılacaklar', keywords: 'yapılacak,hatırlat,alınacak,git,gel,ara,sor,gönder,hazırla,not', items: [], icon: 'check' },
   { id: 'cat_konut', title: 'Konut', keywords: 'ev,daire,konut,villa,yalı,rezidans,bina,site,kat,apartman,stüdyo', items: [], icon: 'home' },
@@ -15,7 +46,7 @@ const defaultCategories = [
   { id: 'cat_bahce', title: 'Bahçe', keywords: 'bahçe,meyve,ağaç,fidan,hobi bahçesi,bağ', items: [], icon: 'flower' }
 ];
 
-const defaultCities = [
+const defaultCities: City[] = [
   { id: 'city_eregli', title: 'Ereğli', keywords: 'ereğli,toros,toros mahallesi,toki,organize' },
   { id: 'city_konya', title: 'Konya', keywords: 'konya,meram,selçuklu,karatay,bosna' },
   { id: 'city_karaman', title: 'Karaman', keywords: 'karaman,ermenek' },
@@ -27,8 +58,8 @@ const defaultTags = ["1+1", "2+1", "3+1", "4+1", "Müstakil", "Eşyalı", "Yatı
 
 export default function TalepGirPage() {
   const [isReady, setIsReady] = useState(false);
-  const [categories, setCategories] = useState(defaultCategories);
-  const [cities, setCities] = useState(defaultCities);
+  const [categories, setCategories] = useState<Category[]>(defaultCategories);
+  const [cities, setCities] = useState<City[]>(defaultCities);
   const [availableTags, setAvailableTags] = useState(defaultTags);
   const [lastAdNumber, setLastAdNumber] = useState(1000);
 
