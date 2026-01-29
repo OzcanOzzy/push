@@ -662,8 +662,4 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsNumber()
   mobileListingGap?: number;
-
-  @IsOptional()
-  @IsBoolean()
-  mobileSearchShow?: boolean;
 }
