@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { API_BASE_URL, fetchJson } from "../../../lib/api";
 
 type Branch = {
@@ -12,6 +12,7 @@ type Branch = {
 
 type Consultant = {
   id: string;
+  photoUrl?: string | null;
   title?: string | null;
   contactPhone?: string | null;
   whatsappNumber?: string | null;
@@ -28,6 +29,8 @@ export default function AdminConsultantsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formState, setFormState] = useState({
     name: "",
     email: "",
@@ -37,6 +40,7 @@ export default function AdminConsultantsPage() {
     whatsappNumber: "",
     contactPhone: "",
     bio: "",
+    photoUrl: "",
   });
 
   const loadData = async () => {
@@ -71,6 +75,33 @@ export default function AdminConsultantsPage() {
     }));
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE_URL}/settings/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormState((prev) => ({ ...prev, photoUrl: data.url }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -99,6 +130,7 @@ export default function AdminConsultantsPage() {
             whatsappNumber: formState.whatsappNumber || undefined,
             contactPhone: formState.contactPhone || undefined,
             bio: formState.bio || undefined,
+            photoUrl: formState.photoUrl || undefined,
           }),
         },
       );
@@ -116,6 +148,7 @@ export default function AdminConsultantsPage() {
         whatsappNumber: "",
         contactPhone: "",
         bio: "",
+        photoUrl: "",
       });
       setEditId(null);
       await loadData();
@@ -135,6 +168,7 @@ export default function AdminConsultantsPage() {
       whatsappNumber: consultant.whatsappNumber ?? "",
       contactPhone: consultant.contactPhone ?? "",
       bio: consultant.bio ?? "",
+      photoUrl: consultant.photoUrl ?? "",
     });
   };
 
@@ -163,6 +197,11 @@ export default function AdminConsultantsPage() {
     } catch {
       setError("Danışman silinemedi.");
     }
+  };
+
+  const resolveImageUrl = (url?: string | null) => {
+    if (!url) return null;
+    return url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
   };
 
   if (!isReady) {
@@ -223,6 +262,44 @@ export default function AdminConsultantsPage() {
               {editId ? "Danışman Güncelle" : "Yeni Danışman"}
             </div>
             <form style={{ display: "grid", gap: 10 }} onSubmit={handleSubmit}>
+              {/* Photo Upload */}
+              <div>
+                <label style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 4, display: "block" }}>
+                  Danışman Fotoğrafı
+                </label>
+                {formState.photoUrl && (
+                  <div style={{ marginBottom: 8 }}>
+                    <img
+                      src={resolveImageUrl(formState.photoUrl) || ""}
+                      alt="Danışman"
+                      style={{ width: 80, height: 80, objectFit: "cover", borderRadius: 8, border: "1px solid var(--color-border)" }}
+                    />
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ width: "100%", marginBottom: 4 }}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? "Yükleniyor..." : "Fotoğraf Yükle"}
+                </button>
+                <input
+                  className="search-input"
+                  placeholder="veya Fotoğraf URL'si"
+                  value={formState.photoUrl}
+                  onChange={(e) => handleChange("photoUrl", e.target.value)}
+                />
+              </div>
+
               <input
                 className="search-input"
                 placeholder="Ad Soyad"
@@ -283,10 +360,33 @@ export default function AdminConsultantsPage() {
                 value={formState.bio}
                 onChange={(event) => handleChange("bio", event.target.value)}
                 rows={3}
+                style={{ resize: "vertical" }}
               />
               <button className="btn">
                 {editId ? "Güncelle" : "Kaydet"}
               </button>
+              {editId && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setEditId(null);
+                    setFormState({
+                      name: "",
+                      email: "",
+                      password: "",
+                      branchId: "",
+                      title: "",
+                      whatsappNumber: "",
+                      contactPhone: "",
+                      bio: "",
+                      photoUrl: "",
+                    });
+                  }}
+                >
+                  İptal
+                </button>
+              )}
             </form>
           </aside>
           <section>
@@ -302,30 +402,59 @@ export default function AdminConsultantsPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   {consultants.map((consultant) => (
                     <div key={consultant.id} className="card">
-                      <div className="card-body">
-                        <div style={{ fontWeight: 700 }}>
-                          {consultant.user?.name ?? "Danışman"}
-                        </div>
-                        <div style={{ color: "var(--color-muted)" }}>
-                          {consultant.user?.email ?? ""}
-                        </div>
-                        <div style={{ color: "var(--color-muted)" }}>
-                          {consultant.branch?.name ?? "Şube yok"} ·{" "}
-                          {consultant.branch?.city?.name ?? ""}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => handleEdit(consultant)}
-                          >
-                            Düzenle
-                          </button>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => handleDelete(consultant.id)}
-                          >
-                            Sil
-                          </button>
+                      <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        {consultant.photoUrl ? (
+                          <img
+                            src={resolveImageUrl(consultant.photoUrl) || ""}
+                            alt={consultant.user?.name || "Danışman"}
+                            style={{ width: 60, height: 60, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: 60,
+                            height: 60,
+                            borderRadius: 8,
+                            background: "var(--color-bg)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}>
+                            <i className="fa-solid fa-user" style={{ fontSize: 24, color: "var(--color-muted)" }}></i>
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700 }}>
+                            {consultant.user?.name ?? "Danışman"}
+                          </div>
+                          <div style={{ color: "var(--color-muted)", fontSize: 13 }}>
+                            {consultant.user?.email ?? ""}
+                          </div>
+                          <div style={{ color: "var(--color-muted)", fontSize: 13 }}>
+                            {consultant.branch?.name ?? "Şube yok"} ·{" "}
+                            {consultant.branch?.city?.name ?? ""}
+                          </div>
+                          {consultant.title && (
+                            <div style={{ color: "var(--color-primary)", fontSize: 12, marginTop: 2 }}>
+                              {consultant.title}
+                            </div>
+                          )}
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: "6px 12px", fontSize: 12 }}
+                              onClick={() => handleEdit(consultant)}
+                            >
+                              Düzenle
+                            </button>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: "6px 12px", fontSize: 12 }}
+                              onClick={() => handleDelete(consultant.id)}
+                            >
+                              Sil
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

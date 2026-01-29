@@ -1,44 +1,87 @@
-## Ozet
-Bu proje Next.js (web), NestJS (api) ve PostgreSQL ile bir emlak sitesi altyapisi olarak kuruldu.
-Asagida mevcut durum ve siradaki adimlar var.
+## Özet
+Bu proje Next.js (web), NestJS (api) ve PostgreSQL ile bir emlak sitesi altyapısı olarak kuruldu.
 
-## Mevcut durum
-- web: Next.js app router ile sabit sayfa taslaklari (anasayfa, sehir, ilan detayi, admin paneli, admin login).
-- api: NestJS + Prisma ile auth (JWT), listings ve requests endpointleri hazir.
-- db: Postgres icin docker-compose mevcut.
+## Mevcut Durum - TAMAMLANDI
 
-## API endpointleri
+### API Backend (NestJS)
+- **Auth**: JWT login
+- **Listings**: CRUD + resim yükleme + kapak resmi + filtreleme
+- **Cities**: CRUD + Türkiye lokasyon import
+- **Districts**: Okuma (cityId ile filtreleme)
+- **Neighborhoods**: Okuma (districtId ile filtreleme)
+- **Branches**: CRUD
+- **Consultants**: CRUD (user + consultant)
+- **Requests**: Müşteri ve danışman talepleri + durum güncelleme
+- **Settings**: Site ayarları (logo, renkler, iletişim)
+- **Listing Attributes**: Dinamik özellik tanımları
+
+### API Endpointleri
 - POST /auth/login
-- GET /listings
-- GET /listings/:id
-- POST /listings (JWT gerekiyor)
-- PATCH /listings/:id (JWT gerekiyor)
-- POST /requests/customer
-- GET /requests/customer (JWT gerekiyor)
-- POST /requests/consultant (JWT gerekiyor)
-- GET /requests/consultant (JWT gerekiyor)
+- GET/POST/PATCH/DELETE /listings (+ /listings/:id/images)
+- GET/POST/PATCH/DELETE /cities (+ /cities/import/tr)
+- GET /districts?cityId=xxx
+- GET /neighborhoods?districtId=xxx
+- GET/POST/PATCH/DELETE /branches
+- GET/POST/PATCH/DELETE /consultants
+- POST /requests/customer, GET /requests/customer
+- POST /requests/consultant, GET /requests/consultant
+- PATCH /requests/customer/:id/status, /requests/consultant/:id/status
+- GET/PATCH /settings
+- GET/POST/PATCH/DELETE /listing-attributes
 
-## UI sayfalari
-- / : Ana sayfa (subeler, hizli islemler, harita placeholder, son ilanlar)
-- /[city] : Sehir sayfasi (filtreler + ilan listesi)
-- /listings/[id] : Ilan detay sayfasi
-- /admin : Yonetim panel taslagi
-- /admin/login : Danisman girisi
+### Web Frontend (Next.js)
 
-## Kurulum notlari
-- Postgres docker-compose ile ayakta:
-  - container: ozcanaktasweb-postgres
-  - db: ozcanaktasweb
-  - user: postgres / pass: postgres
-- Prisma schema: api/prisma/schema.prisma
-- Seed dosyasi: api/prisma/seed.ts (npm run db:seed)
+**Public Sayfalar:**
+- `/` : Ana sayfa (şubeler, hızlı işlemler, hizmet bölgeleri, son ilanlar)
+- `/[city]` : Şehir sayfası (dinamik özellik filtreleri dahil)
+- `/listings/[id]` : İlan detay (özellikler, galeri, harita, danışman)
+- `/firsatlar` : Fırsat ilanları
+- `/arama` : Genel arama sayfası
+- `/hakkimizda` : Hakkımızda sayfası
+- `/iletisim` : İletişim sayfası
+- `/requests/customer` : Müşteri talep formu
+- `/requests/consultant` : Danışman talep formu
 
-## Siradaki adimlar (plan)
-1) API icin .env olustur (DATABASE_URL, JWT_SECRET).
-2) Prisma migrate + seed veri (sehir, sube, ilan, danisman).
-3) Web tarafini API ile bagla:
-   - Ana sayfada son ilanlari API'den cek.
-   - /[city] sayfasinda sehir slug ile ilanlari listele.
-   - /listings/[id] sayfasinda ilan detayi cek.
-4) Admin login ve JWT saklama (cookie/local storage) + korumali istekler.
-5) Iletisim ve talep formlarini API'ye bagla.
+**Admin Panel:**
+- `/admin` : Dashboard (istatistikler + hızlı işlemler)
+- `/admin/login` : Giriş
+- `/admin/listings` : İlan yönetimi (CRUD + resim)
+- `/admin/cities` : Şehir yönetimi + Türkiye import
+- `/admin/branches` : Şube yönetimi
+- `/admin/consultants` : Danışman yönetimi
+- `/admin/requests` : Talep yönetimi
+- `/admin/settings` : Site ayarları
+- `/admin/listing-attributes` : Özellik tanımları
+
+### Özellikler
+- ✅ Dinamik özellik filtreleri (oda sayısı, bina yaşı, vb.)
+- ✅ Resim yükleme ve optimizasyon (max 1600px)
+- ✅ Konum bazlı filtreleme (şehir/ilçe/mahalle)
+- ✅ Fiyat aralığı filtreleme
+- ✅ Kategori filtreleme
+- ✅ Arama fonksiyonu
+- ✅ WhatsApp ve telefon entegrasyonu
+- ✅ Harita gösterimi (OpenStreetMap)
+- ✅ Site ayarları ve tema renkleri
+- ✅ Role-based access control
+
+## Kurulum
+```bash
+# API
+cd api
+cp .env.example .env
+npm install
+npm run db:migrate
+npm run db:seed
+npm run start:dev
+
+# Web
+cd web
+npm install
+npm run dev
+```
+
+## Docker
+```bash
+docker-compose up -d  # PostgreSQL
+```

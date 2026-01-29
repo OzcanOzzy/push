@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useMemo, useState, type FormEvent } from "react";
 import { useSearchParams } from "next/navigation";
 import { fetchJson } from "../../../lib/api";
+import PageWrapper from "../../components/PageWrapper";
 
 type City = {
   id: string;
@@ -176,6 +177,7 @@ function CustomerRequestForm() {
 
 export default function CustomerRequestPage() {
   return (
+    <PageWrapper>
     <Suspense
       fallback={
         <main className="section">
@@ -190,5 +192,6 @@ export default function CustomerRequestPage() {
     >
       <CustomerRequestForm />
     </Suspense>
+    </PageWrapper>
   );
 }

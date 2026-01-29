@@ -36,7 +36,16 @@ type Listing = {
   status?: string | null;
   price?: string | null;
   city?: { name: string } | null;
+  district?: { name: string } | null;
+  neighborhood?: { name: string } | null;
   branch?: { name: string } | null;
+  category?: string | null;
+  propertyType?: string | null;
+  areaGross?: string | null;
+  areaNet?: string | null;
+  attributes?: Record<string, unknown> | null;
+  images?: { url: string; isCover?: boolean | null }[] | null;
+  createdAt?: string | null;
 };
 
 type ListingImage = {
@@ -71,6 +80,13 @@ type ListingDetail = Listing & {
   branchId?: string | null;
   attributes?: Record<string, unknown> | null;
   images?: ListingImage[] | null;
+  // SEO Fields
+  slug?: string | null;
+  seoUrl?: string | null;
+  metaTitle?: string | null;
+  metaDescription?: string | null;
+  metaKeywords?: string | null;
+  canonicalUrl?: string | null;
 };
 
 const statusOptions = [
@@ -124,6 +140,13 @@ export default function AdminListingsPage() {
     neighborhoodId: "",
     branchId: "",
     attributes: {} as Record<string, string | boolean | string[]>,
+    // SEO Fields
+    slug: "",
+    seoUrl: "",
+    metaTitle: "",
+    metaDescription: "",
+    metaKeywords: "",
+    canonicalUrl: "",
   });
   const [editError, setEditError] = useState("");
   const [editStatus, setEditStatus] = useState<"idle" | "loading" | "saving">(
@@ -420,6 +443,13 @@ export default function AdminListingsPage() {
         neighborhoodId: listing.neighborhoodId ?? "",
         branchId: listing.branchId ?? "",
         attributes: (listing.attributes ?? {}) as Record<string, string | boolean>,
+        // SEO Fields
+        slug: listing.slug ?? "",
+        seoUrl: listing.seoUrl ?? "",
+        metaTitle: listing.metaTitle ?? "",
+        metaDescription: listing.metaDescription ?? "",
+        metaKeywords: listing.metaKeywords ?? "",
+        canonicalUrl: listing.canonicalUrl ?? "",
       });
     } catch (error) {
       setEditError("İlan bilgileri alınamadı.");
@@ -518,14 +548,20 @@ export default function AdminListingsPage() {
       category: "HOUSING",
       price: "",
       propertyType: "",
-        areaGross: "",
-        areaNet: "",
+      areaGross: "",
+      areaNet: "",
       isOpportunity: false,
       cityId: "",
       districtId: "",
       neighborhoodId: "",
       branchId: "",
-        attributes: {},
+      attributes: {},
+      slug: "",
+      seoUrl: "",
+      metaTitle: "",
+      metaDescription: "",
+      metaKeywords: "",
+      canonicalUrl: "",
     });
   };
 
@@ -562,6 +598,13 @@ export default function AdminListingsPage() {
         neighborhoodId: editState.neighborhoodId || undefined,
         branchId: editState.branchId,
         attributes: editState.attributes ?? {},
+        // SEO Fields
+        slug: editState.slug || undefined,
+        seoUrl: editState.seoUrl || undefined,
+        metaTitle: editState.metaTitle || undefined,
+        metaDescription: editState.metaDescription || undefined,
+        metaKeywords: editState.metaKeywords || undefined,
+        canonicalUrl: editState.canonicalUrl || undefined,
       };
 
       const response = await fetch(`${API_BASE_URL}/listings/${editId}`, {
@@ -1134,6 +1177,58 @@ export default function AdminListingsPage() {
                       />
                       Fırsat ilanı
                     </label>
+
+                    {/* SEO Settings Section */}
+                    <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 12, marginTop: 8 }}>
+                      <div style={{ fontWeight: 600, marginBottom: 8, color: "var(--color-primary)" }}>
+                        <i className="fa-solid fa-search" style={{ marginRight: 6 }}></i>
+                        SEO Ayarları
+                      </div>
+                      <input
+                        className="search-input"
+                        placeholder="SEO URL (slug) - örn: satilik-daire-istanbul"
+                        value={editState.slug}
+                        onChange={(event) => handleEditChange("slug", event.target.value)}
+                      />
+                      <input
+                        className="search-input"
+                        placeholder="Özel Link URL"
+                        value={editState.seoUrl}
+                        onChange={(event) => handleEditChange("seoUrl", event.target.value)}
+                        style={{ marginTop: 8 }}
+                      />
+                      <input
+                        className="search-input"
+                        placeholder="Meta Başlık (60 karakter)"
+                        value={editState.metaTitle}
+                        onChange={(event) => handleEditChange("metaTitle", event.target.value)}
+                        maxLength={70}
+                        style={{ marginTop: 8 }}
+                      />
+                      <textarea
+                        className="search-input"
+                        placeholder="Meta Açıklama (160 karakter)"
+                        value={editState.metaDescription}
+                        onChange={(event) => handleEditChange("metaDescription", event.target.value)}
+                        rows={2}
+                        maxLength={170}
+                        style={{ marginTop: 8, resize: "vertical" }}
+                      />
+                      <input
+                        className="search-input"
+                        placeholder="Anahtar Kelimeler (virgülle ayırın)"
+                        value={editState.metaKeywords}
+                        onChange={(event) => handleEditChange("metaKeywords", event.target.value)}
+                        style={{ marginTop: 8 }}
+                      />
+                      <input
+                        className="search-input"
+                        placeholder="Canonical URL (opsiyonel)"
+                        value={editState.canonicalUrl}
+                        onChange={(event) => handleEditChange("canonicalUrl", event.target.value)}
+                        style={{ marginTop: 8 }}
+                      />
+                    </div>
                   </fieldset>
                   {editError ? (
                     <div style={{ color: "var(--color-accent)", fontSize: 12 }}>
@@ -1267,55 +1362,188 @@ export default function AdminListingsPage() {
           <section>
             <div className="card">
               <div className="card-body">
-                <div style={{ fontWeight: 700, marginBottom: 12 }}>
-                  Mevcut İlanlar
+                <div style={{ fontWeight: 700, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span>Mevcut İlanlar ({listings.length})</span>
                 </div>
+                
+                {/* Filters */}
+                <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
+                  <input
+                    className="search-input"
+                    placeholder="Ara (başlık, ilan no)..."
+                    style={{ maxWidth: 180 }}
+                    onChange={(e) => {
+                      const val = e.target.value.toLowerCase();
+                      // Filter is applied via filteredListings
+                    }}
+                    id="listing-search"
+                  />
+                  <select
+                    className="search-input"
+                    style={{ maxWidth: 100 }}
+                    id="listing-status-filter"
+                    defaultValue=""
+                  >
+                    <option value="">Tüm Durum</option>
+                    <option value="FOR_SALE">Satılık</option>
+                    <option value="FOR_RENT">Kiralık</option>
+                  </select>
+                  <select
+                    className="search-input"
+                    style={{ maxWidth: 100 }}
+                    id="listing-category-filter"
+                    defaultValue=""
+                  >
+                    <option value="">Tüm Kategori</option>
+                    <option value="HOUSING">Konut</option>
+                    <option value="LAND">Arsa</option>
+                    <option value="COMMERCIAL">Ticari</option>
+                    <option value="FIELD">Tarla</option>
+                    <option value="GARDEN">Bahçe</option>
+                    <option value="HOBBY_GARDEN">Hobi Bahçesi</option>
+                    <option value="TRANSFER">Devren</option>
+                  </select>
+                  <select
+                    className="search-input"
+                    style={{ maxWidth: 130 }}
+                    id="listing-branch-filter"
+                    defaultValue=""
+                  >
+                    <option value="">Tüm Şubeler</option>
+                    {branches.map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    className="search-input"
+                    style={{ maxWidth: 120 }}
+                    id="listing-sort"
+                    defaultValue="newest"
+                  >
+                    <option value="newest">En Yeni</option>
+                    <option value="oldest">En Eski</option>
+                    <option value="price-asc">Fiyat (Artan)</option>
+                    <option value="price-desc">Fiyat (Azalan)</option>
+                    <option value="title">Başlık (A-Z)</option>
+                  </select>
+                </div>
+
                 {isLoading ? <div>Yükleniyor...</div> : null}
                 {!isLoading && listings.length === 0 ? (
                   <div>Henüz ilan yok.</div>
                 ) : null}
-                <div style={{ display: "grid", gap: 12 }}>
-                  {listings.map((listing) => (
-                    <div key={listing.id} className="card">
-                      <div className="card-body">
-                        <span className={`badge ${getStatusClass(listing.status)}`}>
-                          {getStatusLabel(listing.status)}
-                        </span>
-                        <div style={{ fontWeight: 700, marginTop: 6 }}>
-                          {listing.title}
-                        </div>
-                        <div style={{ color: "var(--color-muted)", marginTop: 4 }}>
-                          {listing.city?.name ?? "Türkiye"} ·{" "}
-                          {formatPrice(listing.price)}
-                        </div>
-                        <div style={{ color: "var(--color-muted)", marginTop: 2 }}>
-                          {listing.branch?.name ?? "Şube belirtilmedi"}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                          <Link
-                            className="btn btn-outline"
-                            href={`/listings/${listing.id}`}
+                
+                {/* Table View */}
+                <div style={{ overflowX: "auto" }}>
+                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "left" }}>
+                        <th style={{ padding: "8px 4px", width: 60 }}>Foto</th>
+                        <th style={{ padding: "8px 4px", width: 70 }}>Durum</th>
+                        <th style={{ padding: "8px 4px", width: 80 }}>İlan No</th>
+                        <th style={{ padding: "8px 4px" }}>Başlık</th>
+                        <th style={{ padding: "8px 4px", width: 100 }}>Mahalle</th>
+                        <th style={{ padding: "8px 4px", width: 60 }}>Oda</th>
+                        <th style={{ padding: "8px 4px", width: 50 }}>Kat</th>
+                        <th style={{ padding: "8px 4px", width: 50 }}>Yaş</th>
+                        <th style={{ padding: "8px 4px", width: 100 }}>Fiyat</th>
+                        <th style={{ padding: "8px 4px", width: 120 }}>İşlem</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {listings.map((listing) => {
+                        const coverImage = listing.images?.find(img => img.isCover) || listing.images?.[0];
+                        const attrs = listing.attributes as Record<string, string> | null;
+                        const roomCount = attrs?.odaSayisi || attrs?.["oda_sayisi"] || "-";
+                        const floor = attrs?.bulunduguKat || attrs?.["bulundugu_kat"] || "-";
+                        const totalFloors = attrs?.katSayisi || attrs?.["kat_sayisi"] || "";
+                        const floorDisplay = totalFloors ? `${floor}/${totalFloors}` : floor;
+                        const buildingAge = attrs?.binaYasi || attrs?.["bina_yasi"] || "-";
+                        const listingNo = listing.id.slice(-6).toUpperCase();
+                        
+                        return (
+                          <tr 
+                            key={listing.id} 
+                            style={{ 
+                              borderBottom: "1px solid var(--color-border)",
+                              background: "#fff",
+                            }}
                           >
-                            Görüntüle
-                          </Link>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => loadListingForEdit(listing.id)}
-                            disabled={!isAuthed}
-                          >
-                            Düzenle
-                          </button>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => handleDelete(listing.id)}
-                            disabled={!isAuthed}
-                          >
-                            Sil
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                            <td style={{ padding: "6px 4px" }}>
+                              {coverImage ? (
+                                <img
+                                  src={coverImage.url.startsWith("http") ? coverImage.url : `${API_BASE_URL}${coverImage.url}`}
+                                  alt=""
+                                  style={{ width: 50, height: 35, objectFit: "cover", borderRadius: 4 }}
+                                />
+                              ) : (
+                                <div style={{ width: 50, height: 35, background: "#f0f0f0", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                  <i className="fa-solid fa-image" style={{ color: "#ccc" }}></i>
+                                </div>
+                              )}
+                            </td>
+                            <td style={{ padding: "6px 4px" }}>
+                              <span 
+                                className={`badge ${getStatusClass(listing.status)}`}
+                                style={{ fontSize: 10, padding: "2px 6px" }}
+                              >
+                                {getStatusLabel(listing.status)}
+                              </span>
+                            </td>
+                            <td style={{ padding: "6px 4px", fontFamily: "monospace", fontSize: 11 }}>
+                              #{listingNo}
+                            </td>
+                            <td style={{ padding: "6px 4px", maxWidth: 200 }}>
+                              <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                {listing.title}
+                              </div>
+                              <div style={{ fontSize: 11, color: "var(--color-muted)" }}>
+                                {listing.city?.name}
+                              </div>
+                            </td>
+                            <td style={{ padding: "6px 4px", fontSize: 11 }}>
+                              {listing.neighborhood?.name || listing.district?.name || "-"}
+                            </td>
+                            <td style={{ padding: "6px 4px", textAlign: "center" }}>{roomCount}</td>
+                            <td style={{ padding: "6px 4px", textAlign: "center" }}>{floorDisplay}</td>
+                            <td style={{ padding: "6px 4px", textAlign: "center" }}>{buildingAge}</td>
+                            <td style={{ padding: "6px 4px", fontWeight: 600, color: "var(--color-primary)" }}>
+                              {formatPrice(listing.price)}
+                            </td>
+                            <td style={{ padding: "6px 4px" }}>
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <Link
+                                  className="btn btn-outline"
+                                  href={`/listings/${listing.id}`}
+                                  style={{ padding: "4px 8px", fontSize: 10 }}
+                                >
+                                  <i className="fa-solid fa-eye"></i>
+                                </Link>
+                                <button
+                                  className="btn btn-outline"
+                                  onClick={() => loadListingForEdit(listing.id)}
+                                  disabled={!isAuthed}
+                                  style={{ padding: "4px 8px", fontSize: 10 }}
+                                >
+                                  <i className="fa-solid fa-edit"></i>
+                                </button>
+                                <button
+                                  className="btn btn-outline"
+                                  onClick={() => handleDelete(listing.id)}
+                                  disabled={!isAuthed}
+                                  style={{ padding: "4px 8px", fontSize: 10 }}
+                                >
+                                  <i className="fa-solid fa-trash"></i>
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             </div>

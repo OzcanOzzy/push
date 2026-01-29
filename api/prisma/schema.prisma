@@ -85,16 +85,20 @@ model Consultant {
 }
 
 model Branch {
-  id        String      @id @default(cuid())
-  name      String
-  slug      String      @unique
-  cityId    String
-  address   String?
-  city      City        @relation(fields: [cityId], references: [id])
-  listings  Listing[]
-  staff     Consultant[]
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id             String      @id @default(cuid())
+  name           String
+  slug           String      @unique
+  cityId         String
+  address        String?
+  photoUrl       String?
+  phone          String?
+  whatsappNumber String?
+  email          String?
+  city           City        @relation(fields: [cityId], references: [id])
+  listings       Listing[]
+  staff          Consultant[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 }
 
 model City {
@@ -106,6 +110,7 @@ model City {
   branches      Branch[]
   listings      Listing[]
   customerRequests CustomerRequest[]
+  cityButtons   CityButton[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 }
@@ -168,6 +173,15 @@ model Listing {
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
 
+  // SEO Fields
+  slug            String?         @unique
+  seoUrl          String?
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  canonicalUrl    String?
+  ogImage         String?
+
   branch          Branch          @relation(fields: [branchId], references: [id])
   city            City            @relation(fields: [cityId], references: [id])
   district        District?       @relation(fields: [districtId], references: [id])
@@ -178,6 +192,7 @@ model Listing {
 
   @@index([status, cityId])
   @@index([branchId])
+  @@index([slug])
 }
 
 model ListingAttributeDefinition {
@@ -255,6 +270,7 @@ model SiteSetting {
   logoUrl         String?
   ownerName       String?
   ownerTitle      String?
+  showOwnerTitle  Boolean  @default(true)
   phoneNumber     String?
   whatsappNumber  String?
   email           String?
@@ -265,4 +281,359 @@ model SiteSetting {
   textColor       String?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
+
+  // Banner/Hero section customization
+  heroBackgroundUrl   String?
+  heroOverlayColor    String?
+  heroOverlayOpacity  Float?
+  bannerWidth         Int?
+  bannerHeight        Int?
+  bannerOpacity       Float?
+
+  // Logo customization
+  logoWidth           Int?
+  logoHeight          Int?
+  logoPositionX       Int?
+  logoPositionY       Int?
+  logoTagline         String?
+  logoTaglineFont     String?
+  logoTaglineFontSize Int?
+  logoTaglineColor    String?
+
+  // Logo subtitle (separate from owner info)
+  logoSubtitleText     String?
+  logoSubtitleFont     String?
+  logoSubtitleFontSize Int?
+  logoSubtitleColor    String?
+  logoSubtitleBgColor  String?
+  showLogoSubtitle     Boolean @default(true)
+
+  // Profile section customization
+  profileImageUrl     String?
+  profileImageWidth   Int?
+  profileImageHeight  Int?
+  profilePositionX    Int?
+  profilePositionY    Int?
+  profileOpacity      Float?
+  profileTitleLabel   String?
+  profileTitleFont    String?
+  profileTitleSize    Int?
+  profileTitleColor   String?
+  profileNameFont     String?
+  profileNameSize     Int?
+  profileNameColor    String?
+
+  // Social links
+  instagramUrl        String?
+  facebookUrl         String?
+  youtubeUrl          String?
+  twitterUrl          String?
+  linkedinUrl         String?
+
+  // Header customization
+  headerBgColor       String?
+  headerBgGradient    String?
+  headerBgImage       String?
+  headerBgOpacity     Float?
+  headerNavFont       String?
+  headerNavFontSize   Int?
+  headerNavColor      String?
+
+  // Footer customization
+  footerBgColor       String?
+  footerBgGradient    String?
+  footerBgImage       String?
+  footerBgOpacity     Float?
+  footerTextColor     String?
+  footerFont          String?
+  footerFontSize      Int?
+
+  // Main content background
+  mainBgColor         String?
+  mainBgImage         String?
+  mainBgOpacity       Float?
+
+  // Homepage city buttons customization
+  homeCityBtnWidth       Int?
+  homeCityBtnHeight      Int?
+  homeCityBtnGap         Int?
+  homeCityBtnBorderRadius Int?
+  homeCityBtnAlign       String?
+
+  // Homepage action buttons customization
+  homeActionBtnWidth       Int?
+  homeActionBtnHeight      Int?
+  homeActionBtnGap         Int?
+  homeActionBtnBorderRadius Int?
+  homeActionBtnFontSize    Int?
+
+  // City button text customization
+  cityBtnTitleColor     String?
+  cityBtnTitleSize      Int?
+  cityBtnTitleFont      String?
+  cityBtnSubtitleColor  String?
+  cityBtnSubtitleSize   Int?
+  
+  // City button badge
+  cityBtnBadgeText      String?
+  cityBtnBadgeColor     String?
+  cityBtnBadgeBgColor   String?
+  cityBtnBadgeIcon      String?
+  cityBtnShowBadge      Boolean @default(true)
+  
+  // Section titles
+  sectionTitleColor     String?
+  sectionTitleFont      String?
+  sectionTitleSize      Int?
+  branchSectionTitle    String?
+  recentListingsTitle   String?
+  
+  // View all button
+  viewAllBtnText        String?
+  viewAllBtnBgColor     String?
+  viewAllBtnTextColor   String?
+  
+  // Footer content
+  footerLogoSubtitle    String?
+  footerAddress         String?
+  footerAddress2        String?
+  footerPhone           String?
+  footerPhone2          String?
+  footerEmail           String?
+  footerWorkingHours    String?
+  footerCopyright       String?
+  footerShowMap         Boolean @default(false)
+  footerMapUrl          String?
+
+  // Mobile Settings
+  mobileHeaderPadding        String?
+  mobileNavFontSize          Int?
+  mobileLogoRowPadding       String?
+  mobileLogoHeight           Int?
+  mobileLogoSubSize          Int?
+  mobileLogoAlign            String?
+  mobileSocialSize           Int?
+  mobileSocialShow           Boolean @default(true)
+  mobileSearchWidth          Int?
+  mobileSearchHeight         Int?
+  mobileSearchShow           Boolean @default(true)
+  mobileBannerHeight         Int?
+  mobileBannerAspectRatio    String?
+  mobileBannerFullWidth      Boolean @default(true)
+  mobileBannerBorderRadius   Int?
+  mobileBranchColumns        Int?
+  mobileBranchGap            Int?
+  mobileBranchSize           Int?
+  mobileBranchBorderRadius   Int?
+  mobileBranchAlign          String?
+  mobileActionColumns        Int?
+  mobileActionGap            Int?
+  mobileActionHeight         Int?
+  mobileActionFontSize       Int?
+  mobileActionBorderRadius   Int?
+  mobileListingColumns       Int?
+  mobileListingGap           Int?
+}
+
+// Dynamic footer items - for multiple addresses, phones, etc.
+model FooterItem {
+  id         String   @id @default(cuid())
+  type       String   // address, phone, email, map, text, link
+  label      String?
+  value      String
+  linkUrl    String?
+  icon       String?  // Font Awesome icon class
+  iconColor  String?
+  textColor  String?
+  sortOrder  Int      @default(0)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+// Listing labels/badges for custom tags
+model ListingLabel {
+  id              String   @id @default(cuid())
+  name            String
+  slug            String   @unique
+  textColor       String   @default("#ffffff")
+  bgColor         String   @default("#10b981")
+  borderRadius    Int      @default(4)
+  isRounded       Boolean  @default(false)
+  sortOrder       Int      @default(0)
+  isActive        Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model CityButton {
+  id             String   @id @default(cuid())
+  name           String
+  slug           String   @unique
+  imageUrl       String?
+  icon           String?  // Font Awesome icon class e.g. "fa-solid fa-building"
+  iconColor      String?
+  bgColor        String?
+  borderColor    String?
+  width          Int?
+  height         Int?
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  cityId         String?
+  // Branch contact info
+  address        String?
+  phone          String?
+  whatsappNumber String?
+  email          String?
+  consultantName String?
+  latitude       Float?
+  longitude      Float?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  city           City?    @relation(fields: [cityId], references: [id])
+
+  @@index([sortOrder])
+}
+
+model Banner {
+  id          String   @id @default(cuid())
+  title       String?
+  imageUrl    String
+  linkUrl     String?
+  position    String   @default("home-top")
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  startDate   DateTime?
+  endDate     DateTime?
+  width       Int?
+  height      Int?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([position, isActive, sortOrder])
+}
+
+model ActionButton {
+  id          String   @id @default(cuid())
+  name        String
+  linkUrl     String
+  imageUrl    String?
+  bgColor     String?
+  textColor   String?
+  icon        String?
+  width       Int?
+  height      Int?
+  sortOrder   Int      @default(0)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model PageSetting {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  ogImage         String?
+  content         Json?
+  isPublished     Boolean  @default(true)
+  showInMenu      Boolean  @default(true)
+  menuOrder       Int      @default(0)
+  template        String   @default("default")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isPublished, menuOrder])
+}
+
+model BlogPost {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  excerpt         String?
+  content         String?
+  coverImage      String?
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  isPublished     Boolean  @default(false)
+  publishedAt     DateTime?
+  showOnHome      Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([isPublished, publishedAt])
+}
+
+model MenuItem {
+  id        String   @id @default(cuid())
+  label     String
+  href      String
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  textColor String?
+  bgColor   String?
+  icon      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
+}
+
+model PageDesign {
+  id              String   @id @default(cuid())
+  pageType        String   @unique // home, listings, listing-detail, etc.
+  pageName        String
+  // Header settings
+  headerBgColor   String?
+  headerBgGradient String?
+  headerBgImage   String?
+  headerNavColor  String?
+  headerNavFont   String?
+  headerNavFontSize Int?
+  showHeader      Boolean  @default(true)
+  // Footer settings
+  footerBgColor   String?
+  footerBgGradient String?
+  footerBgImage   String?
+  footerTextColor String?
+  footerFont      String?
+  footerFontSize  Int?
+  showFooter      Boolean  @default(true)
+  // Content area settings
+  contentBgColor  String?
+  contentBgImage  String?
+  contentPadding  Int?
+  contentMaxWidth Int?
+  // Banner settings
+  showBanner      Boolean  @default(false)
+  bannerHeight    Int?
+  bannerBgColor   String?
+  bannerBgImage   String?
+  // SEO settings
+  metaTitle       String?
+  metaDescription String?
+  metaKeywords    String?
+  seoUrl          String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+}
+
+model SocialLink {
+  id        String   @id @default(cuid())
+  label     String
+  url       String
+  icon      String   @default("fa-solid fa-link")
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([isActive, sortOrder])
 }

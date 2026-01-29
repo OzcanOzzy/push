@@ -44,42 +44,44 @@ export default function AdminLoginPage() {
   };
 
   return (
-    <main className="section">
-      <div className="container" style={{ maxWidth: 480 }}>
-        <div className="section-title">Danışman Girişi</div>
-        <div className="card">
-          <form
-            className="card-body"
-            style={{ display: "grid", gap: 12 }}
-            onSubmit={handleSubmit}
-          >
-            <input
-              className="search-input"
-              placeholder="E-posta"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              autoComplete="email"
-              required
-            />
-            <input
-              className="search-input"
-              type="password"
-              placeholder="Şifre"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              autoComplete="current-password"
-              required
-            />
-            {error ? (
-              <div style={{ color: "var(--color-accent)", fontSize: 13 }}>
-                {error}
-              </div>
-            ) : null}
-            <button className="btn" disabled={isLoading}>
-              {isLoading ? "Giriş yapılıyor..." : "Giriş Yap"}
-            </button>
-          </form>
+    <main className="login-page">
+      <div className="login-card">
+        <div className="login-logo">
+          <img src="/logo.png" alt="Emlaknomi" />
         </div>
+        <div className="login-title">Welcome to Admin Panel</div>
+        <div className="login-subtitle">Please log in below.</div>
+        <form className="login-form" onSubmit={handleSubmit}>
+          <label className="login-label" htmlFor="login-email">
+            Email
+          </label>
+          <input
+            id="login-email"
+            className="login-input"
+            placeholder="you@example.com"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            required
+          />
+          <label className="login-label" htmlFor="login-password">
+            Password
+          </label>
+          <input
+            id="login-password"
+            className="login-input"
+            type="password"
+            placeholder="••••••••"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            required
+          />
+          {error ? <div className="login-error">{error}</div> : null}
+          <button className="login-button" disabled={isLoading}>
+            {isLoading ? "Giriş yapılıyor..." : "Log in"}
+          </button>
+        </form>
       </div>
     </main>
   );

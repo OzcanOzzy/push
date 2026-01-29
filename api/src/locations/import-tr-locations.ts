@@ -121,44 +121,62 @@ export async function importTurkeyLocations(
 
     const counties = city.counties ?? [];
     for (const county of counties) {
+      const districtName = normalizeName(county.name);
+      const districtSlug = slugify(districtName);
+      const districtRecord = await prisma.district.upsert({
+        where: {
+          cityId_slug: { cityId: cityRecord.id, slug: districtSlug },
+        },
+        update: { name: districtName },
+        create: {
+          name: districtName,
+          slug: districtSlug,
+          cityId: cityRecord.id,
+        },
+      });
+      stats.districts += 1;
+
+      const neighborhoodRecords: {
+        name: string;
+        slug: string;
+        cityId: string;
+        districtId: string;
+      }[] = [];
+
+      const neighborhoodsSeen = new Set<string>();
       const districts = county.districts ?? [];
       for (const district of districts) {
-        const districtName = normalizeName(district.name);
-        const districtSlug = slugify(districtName);
-        const districtRecord = await prisma.district.upsert({
-          where: {
-            cityId_slug: { cityId: cityRecord.id, slug: districtSlug },
-          },
-          update: { name: districtName },
-          create: {
-            name: districtName,
-            slug: districtSlug,
-            cityId: cityRecord.id,
-          },
-        });
-        stats.districts += 1;
+        const neighborhoodNames: string[] = [district.name];
+        const nested = district.neighborhoods ?? [];
+        for (const nestedItem of nested) {
+          neighborhoodNames.push(nestedItem.name);
+        }
 
-        const neighborhoods =
-          district.neighborhoods?.map((item) => {
-            const neighborhoodName = normalizeName(item.name);
-            return {
-              name: neighborhoodName,
-              slug: slugify(neighborhoodName),
-              cityId: cityRecord.id,
-              districtId: districtRecord.id,
-            };
-          }) ?? [];
-
-        for (const group of chunk(neighborhoods, 500)) {
-          if (group.length === 0) {
+        for (const name of neighborhoodNames) {
+          const normalized = normalizeName(name);
+          const slug = slugify(normalized);
+          if (neighborhoodsSeen.has(slug)) {
             continue;
           }
-          await prisma.neighborhood.createMany({
-            data: group,
-            skipDuplicates: true,
+          neighborhoodsSeen.add(slug);
+          neighborhoodRecords.push({
+            name: normalized,
+            slug,
+            cityId: cityRecord.id,
+            districtId: districtRecord.id,
           });
-          stats.neighborhoods += group.length;
         }
+      }
+
+      for (const group of chunk(neighborhoodRecords, 500)) {
+        if (group.length === 0) {
+          continue;
+        }
+        await prisma.neighborhood.createMany({
+          data: group,
+          skipDuplicates: true,
+        });
+        stats.neighborhoods += group.length;
       }
     }
   }

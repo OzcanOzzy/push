@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { API_BASE_URL, fetchJson } from "../../../lib/api";
 
 type City = {
@@ -14,6 +14,10 @@ type Branch = {
   name: string;
   slug: string;
   address?: string | null;
+  photoUrl?: string | null;
+  phone?: string | null;
+  whatsappNumber?: string | null;
+  email?: string | null;
   city?: { id: string; name: string } | null;
 };
 
@@ -32,10 +36,16 @@ export default function AdminBranchesPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formState, setFormState] = useState({
     name: "",
     slug: "",
     address: "",
+    photoUrl: "",
+    phone: "",
+    whatsappNumber: "",
+    email: "",
     cityId: "",
   });
 
@@ -74,6 +84,33 @@ export default function AdminBranchesPage() {
     });
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const token = localStorage.getItem("auth_token");
+    if (!token) return;
+
+    setUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch(`${API_BASE_URL}/settings/upload`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}` },
+        body: formData,
+      });
+      const data = await res.json();
+      if (data.url) {
+        setFormState((prev) => ({ ...prev, photoUrl: data.url }));
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
@@ -96,6 +133,10 @@ export default function AdminBranchesPage() {
             name: formState.name,
             slug: formState.slug,
             address: formState.address || undefined,
+            photoUrl: formState.photoUrl || undefined,
+            phone: formState.phone || undefined,
+            whatsappNumber: formState.whatsappNumber || undefined,
+            email: formState.email || undefined,
             cityId: formState.cityId,
           }),
         },
@@ -105,7 +146,16 @@ export default function AdminBranchesPage() {
         throw new Error("Şube kaydedilemedi.");
       }
 
-      setFormState({ name: "", slug: "", address: "", cityId: "" });
+      setFormState({
+        name: "",
+        slug: "",
+        address: "",
+        photoUrl: "",
+        phone: "",
+        whatsappNumber: "",
+        email: "",
+        cityId: "",
+      });
       setEditId(null);
       await loadData();
     } catch {
@@ -119,6 +169,10 @@ export default function AdminBranchesPage() {
       name: branch.name,
       slug: branch.slug,
       address: branch.address ?? "",
+      photoUrl: branch.photoUrl ?? "",
+      phone: branch.phone ?? "",
+      whatsappNumber: branch.whatsappNumber ?? "",
+      email: branch.email ?? "",
       cityId: branch.city?.id ?? "",
     });
   };
@@ -148,6 +202,11 @@ export default function AdminBranchesPage() {
     } catch {
       setError("Şube silinemedi. İlan bağlı olabilir.");
     }
+  };
+
+  const resolveImageUrl = (url?: string | null) => {
+    if (!url) return null;
+    return url.startsWith("http") ? url : `${API_BASE_URL}${url}`;
   };
 
   if (!isReady) {
@@ -208,6 +267,44 @@ export default function AdminBranchesPage() {
               {editId ? "Şube Güncelle" : "Yeni Şube"}
             </div>
             <form style={{ display: "grid", gap: 10 }} onSubmit={handleSubmit}>
+              {/* Photo Upload */}
+              <div>
+                <label style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 4, display: "block" }}>
+                  Şube Fotoğrafı
+                </label>
+                {formState.photoUrl && (
+                  <div style={{ marginBottom: 8 }}>
+                    <img
+                      src={resolveImageUrl(formState.photoUrl) || ""}
+                      alt="Şube"
+                      style={{ width: "100%", maxWidth: 200, height: 100, objectFit: "cover", borderRadius: 8, border: "1px solid var(--color-border)" }}
+                    />
+                  </div>
+                )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleFileUpload}
+                  style={{ display: "none" }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  style={{ width: "100%", marginBottom: 4 }}
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                >
+                  {uploading ? "Yükleniyor..." : "Fotoğraf Yükle"}
+                </button>
+                <input
+                  className="search-input"
+                  placeholder="veya Fotoğraf URL'si"
+                  value={formState.photoUrl}
+                  onChange={(e) => handleChange("photoUrl", e.target.value)}
+                />
+              </div>
+
               <input
                 className="search-input"
                 placeholder="Şube adı"
@@ -222,12 +319,6 @@ export default function AdminBranchesPage() {
                 onChange={(event) => handleChange("slug", event.target.value)}
                 required
               />
-              <input
-                className="search-input"
-                placeholder="Adres (opsiyonel)"
-                value={formState.address}
-                onChange={(event) => handleChange("address", event.target.value)}
-              />
               <select
                 className="search-input"
                 value={formState.cityId}
@@ -241,9 +332,68 @@ export default function AdminBranchesPage() {
                   </option>
                 ))}
               </select>
+
+              <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 10, marginTop: 4 }}>
+                <div style={{ fontWeight: 600, fontSize: 12, color: "var(--color-muted)", marginBottom: 8 }}>
+                  <i className="fa-solid fa-address-card" style={{ marginRight: 6 }}></i>
+                  İletişim Bilgileri
+                </div>
+                <textarea
+                  className="search-input"
+                  placeholder="Adres"
+                  value={formState.address}
+                  onChange={(event) => handleChange("address", event.target.value)}
+                  rows={2}
+                  style={{ resize: "vertical" }}
+                />
+                <input
+                  className="search-input"
+                  placeholder="Telefon"
+                  value={formState.phone}
+                  onChange={(event) => handleChange("phone", event.target.value)}
+                  style={{ marginTop: 8 }}
+                />
+                <input
+                  className="search-input"
+                  placeholder="WhatsApp"
+                  value={formState.whatsappNumber}
+                  onChange={(event) => handleChange("whatsappNumber", event.target.value)}
+                  style={{ marginTop: 8 }}
+                />
+                <input
+                  className="search-input"
+                  placeholder="E-posta"
+                  type="email"
+                  value={formState.email}
+                  onChange={(event) => handleChange("email", event.target.value)}
+                  style={{ marginTop: 8 }}
+                />
+              </div>
+
               <button className="btn">
                 {editId ? "Güncelle" : "Kaydet"}
               </button>
+              {editId && (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => {
+                    setEditId(null);
+                    setFormState({
+                      name: "",
+                      slug: "",
+                      address: "",
+                      photoUrl: "",
+                      phone: "",
+                      whatsappNumber: "",
+                      email: "",
+                      cityId: "",
+                    });
+                  }}
+                >
+                  İptal
+                </button>
+              )}
             </form>
           </aside>
           <section>
@@ -259,25 +409,61 @@ export default function AdminBranchesPage() {
                 <div style={{ display: "grid", gap: 12 }}>
                   {branches.map((branch) => (
                     <div key={branch.id} className="card">
-                      <div className="card-body">
-                        <div style={{ fontWeight: 700 }}>{branch.name}</div>
-                        <div style={{ color: "var(--color-muted)" }}>{branch.slug}</div>
-                        <div style={{ color: "var(--color-muted)" }}>
-                          {branch.city?.name ?? "Şehir yok"}
-                        </div>
-                        <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => handleEdit(branch)}
-                          >
-                            Düzenle
-                          </button>
-                          <button
-                            className="btn btn-outline"
-                            onClick={() => handleDelete(branch.id)}
-                          >
-                            Sil
-                          </button>
+                      <div className="card-body" style={{ display: "flex", gap: 12, alignItems: "flex-start" }}>
+                        {branch.photoUrl ? (
+                          <img
+                            src={resolveImageUrl(branch.photoUrl) || ""}
+                            alt={branch.name}
+                            style={{ width: 80, height: 60, objectFit: "cover", borderRadius: 8, flexShrink: 0 }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: 80,
+                            height: 60,
+                            borderRadius: 8,
+                            background: "var(--color-bg)",
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            flexShrink: 0,
+                          }}>
+                            <i className="fa-solid fa-building" style={{ fontSize: 20, color: "var(--color-muted)" }}></i>
+                          </div>
+                        )}
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontWeight: 700 }}>{branch.name}</div>
+                          <div style={{ color: "var(--color-muted)", fontSize: 12 }}>{branch.slug}</div>
+                          <div style={{ color: "var(--color-muted)", fontSize: 12 }}>
+                            {branch.city?.name ?? "Şehir yok"}
+                          </div>
+                          {branch.phone && (
+                            <div style={{ fontSize: 12, marginTop: 4 }}>
+                              <i className="fa-solid fa-phone" style={{ marginRight: 6, color: "var(--color-primary)" }}></i>
+                              {branch.phone}
+                            </div>
+                          )}
+                          {branch.address && (
+                            <div style={{ fontSize: 12, color: "var(--color-muted)", marginTop: 2 }}>
+                              <i className="fa-solid fa-location-dot" style={{ marginRight: 6 }}></i>
+                              {branch.address.substring(0, 50)}...
+                            </div>
+                          )}
+                          <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: "6px 12px", fontSize: 12 }}
+                              onClick={() => handleEdit(branch)}
+                            >
+                              Düzenle
+                            </button>
+                            <button
+                              className="btn btn-outline"
+                              style={{ padding: "6px 12px", fontSize: 12 }}
+                              onClick={() => handleDelete(branch.id)}
+                            >
+                              Sil
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>

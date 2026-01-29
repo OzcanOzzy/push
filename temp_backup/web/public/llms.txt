@@ -1,0 +1,9 @@
+site_name: Emlaknomi - Ozcan Aktas
+site_url: https://www.ozcanaktas.com
+contact: emlaknomiozcan@gmail.com
+description: Turkiye genelinde emlak ilanlari, subeler ve danisman agi.
+language: tr
+content:
+  - Home: /
+  - Listings: /listings
+  - Branches: /{city}

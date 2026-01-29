@@ -1,7 +1,6 @@
 "use client";
 
 import { createContext, useContext, useEffect, useMemo, useState } from "react";
-import { fetchJsonOptional } from "../../lib/api";
 import { defaultSettings, type SiteSettings } from "../../lib/settings";
 
 type SettingsContextValue = Required<SiteSettings>;
@@ -11,6 +10,7 @@ const SettingsContext = createContext<SettingsContextValue>(defaultSettings);
 export const useSettings = () => useContext(SettingsContext);
 
 const applyCssVars = (settings: SettingsContextValue) => {
+  if (typeof document === 'undefined') return;
   const root = document.documentElement;
   root.style.setProperty("--color-primary", settings.primaryColor);
   root.style.setProperty("--color-accent", settings.accentColor);
@@ -20,28 +20,18 @@ const applyCssVars = (settings: SettingsContextValue) => {
 
 export default function SettingsProvider({
   children,
+  initialSettings,
 }: {
   children: React.ReactNode;
+  initialSettings?: SettingsContextValue;
 }) {
-  const [settings, setSettings] = useState<SettingsContextValue>(defaultSettings);
+  // Use server-provided initial settings
+  const [settings] = useState<SettingsContextValue>(initialSettings || defaultSettings);
 
+  // Apply CSS vars on mount (for client-side navigation)
   useEffect(() => {
-    let isMounted = true;
-    fetchJsonOptional<SiteSettings>("/settings", { cache: "no-store" })
-      .then((data) => {
-        if (!isMounted || !data) {
-          return;
-        }
-        const merged = { ...defaultSettings, ...data };
-        setSettings(merged);
-        applyCssVars(merged);
-      })
-      .catch(() => undefined);
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+    applyCssVars(settings);
+  }, [settings]);
 
   const value = useMemo(() => settings, [settings]);
 

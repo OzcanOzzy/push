@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { fetchJson } from "../../../lib/api";
+import PageWrapper from "../../components/PageWrapper";
 
 type Consultant = {
   id: string;
@@ -95,6 +96,7 @@ export default function ConsultantRequestPage() {
 
   if (!isReady) {
     return (
+      <PageWrapper>
       <main className="section">
         <div className="container">
           <div className="section-title">Danışman Talebi</div>
@@ -103,11 +105,13 @@ export default function ConsultantRequestPage() {
           </div>
         </div>
       </main>
+      </PageWrapper>
     );
   }
 
   if (!isAuthed) {
     return (
+      <PageWrapper>
       <main className="section">
         <div className="container">
           <div className="section-title">Danışman Talebi</div>
@@ -121,10 +125,12 @@ export default function ConsultantRequestPage() {
           </div>
         </div>
       </main>
+      </PageWrapper>
     );
   }
 
   return (
+    <PageWrapper>
     <main className="section">
       <div className="container" style={{ maxWidth: 640 }}>
         <div className="section-title">Danışman Talebi</div>
@@ -194,5 +200,6 @@ export default function ConsultantRequestPage() {
         </div>
       </div>
     </main>
+    </PageWrapper>
   );
 }

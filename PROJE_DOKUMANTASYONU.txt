@@ -1,0 +1,1394 @@
+================================================================================
+        OZCANAKTASWEB - KOMPLE PROJE DOKÜMANTASYONU
+================================================================================
+
+Versiyon: 1.0
+Tarih: Ocak 2026
+Amaç: Projeyi hiç bilmeyen birinin öğrenebileceği detaylı teknik dokümantasyon
+
+================================================================================
+                    İÇİNDEKİLER (BAŞLIK LİSTESİ)
+================================================================================
+
+BÖLÜM 1: GENEL BAKIŞ
+    1.1 Proje Hakkında
+    1.2 Teknoloji Yığını
+    1.3 Proje Yapısı
+
+BÖLÜM 2: BACKEND (API)
+    2.1 API Klasör Yapısı
+    2.2 Modüller Detaylı
+    2.3 API Endpoint'leri
+    2.4 Çevre Değişkenleri
+
+BÖLÜM 3: FRONTEND (WEB)
+    3.1 Web Klasör Yapısı
+    3.2 Sayfalar
+    3.3 Componentler
+    3.4 Layout ve Metadata
+
+BÖLÜM 4: CSS VE TASARIM
+    4.1 CSS Değişkenleri
+    4.2 Header (Üst Bar)
+    4.3 Logo Alanı
+    4.4 Sosyal Medya İkonları
+    4.5 Arama Barı
+    4.6 Banner/Hero
+    4.7 Şube Butonları
+    4.8 Aksiyon Butonları
+    4.9 İlan Kartları
+    4.10 Footer
+    4.11 Mobil Ayarlar
+    4.12 Admin Panel
+
+BÖLÜM 5: DATABASE
+    5.1 Tablo Listesi
+    5.2 SiteSetting Tablosu
+    5.3 Diğer Tablolar
+    5.4 İlişkiler
+
+BÖLÜM 6: ADMIN PANEL
+    6.1 Admin Sayfaları
+    6.2 Admin Ayarları
+
+BÖLÜM 7: ÖZEL KONULAR
+    7.1 Authentication
+    7.2 Dosya Yükleme
+    7.3 SEO
+    7.4 Mobil Uyumluluk
+
+BÖLÜM 8: SORUN GİDERME
+    8.1 Sık Karşılaşılan Hatalar
+    8.2 Debug İpuçları
+
+
+================================================================================
+                    BÖLÜM 1: GENEL BAKIŞ
+================================================================================
+
+--------------------------------------------------------------------------------
+1.1 PROJE HAKKINDA
+--------------------------------------------------------------------------------
+
+Proje Adı: ozcanaktasweb
+Tür: Emlak Web Sitesi
+
+Özellikler:
+    - İlan yönetimi (satılık, kiralık, fırsat)
+    - Şube/şehir bazlı listeleme
+    - Danışman yönetimi
+    - Admin paneli ile tam kontrol
+    - Mobil uyumlu tasarım
+    - SEO optimize
+
+--------------------------------------------------------------------------------
+1.2 TEKNOLOJİ YIĞINI
+--------------------------------------------------------------------------------
+
+Katman          Teknoloji       Versiyon    Açıklama
+--------------------------------------------------------------------------------
+Frontend        Next.js         16.1.4      React tabanlı web framework
+Frontend        React           19.2.3      UI library
+Backend         NestJS          11.0.1      Node.js backend framework
+Database        PostgreSQL      16          İlişkisel veritabanı
+ORM             Prisma          7.3.0       Database toolkit
+Container       Docker          -           Database için
+Styling         CSS             -           globals.css dosyası
+Maps            Leaflet         1.9.4       Harita entegrasyonu
+Auth            JWT             -           Token tabanlı kimlik doğrulama
+
+--------------------------------------------------------------------------------
+1.3 PROJE YAPISI
+--------------------------------------------------------------------------------
+
+c:\ozcanaktasweb\
+|
++-- api\                          # BACKEND (NestJS)
+|   +-- prisma\                   # Database şeması ve migration'lar
+|   |   +-- schema.prisma         # ÖNEMLİ: Tüm tablo tanımları
+|   |   +-- migrations\           # Database değişiklik geçmişi
+|   |   +-- seed.ts               # Başlangıç verileri
+|   +-- src\                      # Kaynak kodlar
+|   |   +-- app.module.ts         # Ana modül
+|   |   +-- main.ts               # Başlangıç noktası
+|   |   +-- auth\                 # Kimlik doğrulama
+|   |   +-- listings\             # İlan işlemleri
+|   |   +-- settings\             # Site ayarları
+|   |   +-- [diğer modüller]\     # Her özellik için modül
+|   +-- uploads\                  # Yüklenen dosyalar
+|   +-- package.json              # Bağımlılıklar
+|   +-- .env                      # Gizli ayarlar
+|
++-- web\                          # FRONTEND (Next.js)
+|   +-- app\                      # Sayfalar ve componentler
+|   |   +-- page.tsx              # Ana sayfa
+|   |   +-- layout.tsx            # Genel layout
+|   |   +-- globals.css           # ÖNEMLİ: Tüm stiller
+|   |   +-- admin\                # Admin paneli sayfaları
+|   |   +-- components\           # Ortak componentler
+|   |   +-- [sayfa klasörleri]\   # Her sayfa için klasör
+|   +-- lib\                      # Yardımcı fonksiyonlar
+|   |   +-- api.ts                # API çağrıları
+|   |   +-- settings.ts           # Ayar tipleri
+|   +-- public\                   # Statik dosyalar
+|   +-- package.json              # Bağımlılıklar
+|   +-- .env.local                # Gizli ayarlar
+|
++-- docker-compose.yml            # Database container ayarları
++-- backups\                      # Yedek dosyaları
++-- project_notes\                # Proje notları
+
+
+================================================================================
+                    BÖLÜM 2: BACKEND (API)
+================================================================================
+
+--------------------------------------------------------------------------------
+2.1 API KLASÖR YAPISI
+--------------------------------------------------------------------------------
+
+KONUM: c:\ozcanaktasweb\api\
+
+KÖK DOSYALAR:
+--------------------------------------------------------------------------------
+Dosya               Ne İşe Yarar?
+--------------------------------------------------------------------------------
+package.json        Paketler ve npm komutları
+tsconfig.json       TypeScript ayarları
+nest-cli.json       NestJS CLI ayarları
+.env                Çevre değişkenleri (GİZLİ)
+prisma.config.ts    Prisma yapılandırması
+
+SRC KLASÖRÜ:
+--------------------------------------------------------------------------------
+api/src/
++-- main.ts                 # Uygulama başlangıcı
++-- app.module.ts           # Ana modül (tüm modülleri birleştirir)
++-- app.controller.ts       # Ana controller (health check)
++-- app.service.ts          # Ana servis
+|
++-- prisma/                 # Database bağlantısı
+|   +-- prisma.module.ts
+|   +-- prisma.service.ts   # Prisma client
+|
++-- auth/                   # Kimlik doğrulama modülü
++-- listings/               # İlan modülü
++-- settings/               # Site ayarları modülü
++-- banners/                # Banner modülü
++-- branches/               # Şube modülü
++-- cities/                 # Şehir modülü
++-- districts/              # İlçe modülü
++-- neighborhoods/          # Mahalle modülü
++-- consultants/            # Danışman modülü
++-- requests/               # Talep modülü
++-- city-buttons/           # Şehir butonları modülü
++-- action-buttons/         # Aksiyon butonları modülü
++-- menu-items/             # Menü modülü
++-- footer-items/           # Footer modülü
++-- social-links/           # Sosyal medya modülü
++-- listing-labels/         # İlan etiketleri modülü
++-- listing-attributes/     # İlan özellikleri modülü
++-- pages/                  # Dinamik sayfalar modülü
++-- blog/                   # Blog modülü
++-- page-design/            # Sayfa tasarım modülü
++-- backup/                 # Yedekleme modülü
+|
++-- middleware/             # Ara katman yazılımları
+|   +-- request-logger.middleware.ts
+|
++-- shared/                 # Paylaşılan kodlar
+    +-- decorators/         # Özel decorator'lar
+    +-- types/              # Tip tanımları
+
+--------------------------------------------------------------------------------
+2.2 MODÜLLER DETAYLI
+--------------------------------------------------------------------------------
+
+Her modül 3 ana dosyadan oluşur:
+
+    modül-adı/
+    +-- modül-adı.module.ts     # Modül tanımı
+    +-- modül-adı.controller.ts # HTTP endpoint'leri
+    +-- modül-adı.service.ts    # İş mantığı
+    +-- dto/                    # Veri transfer objeleri (opsiyonel)
+        +-- create-xxx.dto.ts
+        +-- update-xxx.dto.ts
+
+================================================================================
+2.2.1 AUTH MODÜLÜ (Kimlik Doğrulama)
+================================================================================
+
+KONUM: api/src/auth/
+
+NE İŞE YARAR: Kullanıcı girişi ve yetkilendirme
+
+DOSYALAR:
+    auth/
+    +-- auth.module.ts          # Modül tanımı
+    +-- auth.controller.ts      # Login endpoint
+    +-- auth.service.ts         # Giriş işlemleri
+    +-- jwt.strategy.ts         # JWT doğrulama stratejisi
+    +-- dto/
+    |   +-- login.dto.ts        # Giriş form verisi
+    +-- guards/
+        +-- jwt-auth.guard.ts   # JWT kontrolü
+        +-- roles.guard.ts      # Rol kontrolü
+
+API ENDPOINT'LERİ:
+--------------------------------------------------------------------------------
+Method   URL             Açıklama            Yetki
+--------------------------------------------------------------------------------
+POST     /auth/login     Kullanıcı girişi    Herkese açık
+
+ÖRNEK KULLANIM:
+--------------------------------------------------------------------------------
+// Giriş isteği
+fetch('http://localhost:3001/auth/login', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    email: 'admin@example.com',
+    password: 'şifre123'
+  })
+})
+
+// Cevap
+{
+  "access_token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": "xxx",
+    "email": "admin@example.com",
+    "name": "Admin",
+    "role": "ADMIN"
+  }
+}
+
+================================================================================
+2.2.2 LISTINGS MODÜLÜ (İlanlar)
+================================================================================
+
+KONUM: api/src/listings/
+
+NE İŞE YARAR: İlan ekleme, düzenleme, silme, listeleme
+
+API ENDPOINT'LERİ:
+--------------------------------------------------------------------------------
+Method   URL                              Açıklama          Yetki
+--------------------------------------------------------------------------------
+GET      /listings                        İlanları listele  Herkese açık
+GET      /listings/:id                    Tek ilan getir    Herkese açık
+POST     /listings                        Yeni ilan ekle    JWT gerekli
+PATCH    /listings/:id                    İlan güncelle     JWT gerekli
+DELETE   /listings/:id                    İlan sil          JWT gerekli
+POST     /listings/:id/images/upload      Görsel yükle      JWT gerekli
+
+FİLTRE PARAMETRELERİ:
+--------------------------------------------------------------------------------
+GET /listings?status=active&category=sale&citySlug=konya&minPrice=100000
+
+Parametre       Açıklama            Örnek
+--------------------------------------------------------------------------------
+status          İlan durumu         active, draft, sold
+category        Kategori            sale, rent
+citySlug        Şehir slug          konya, istanbul
+branchId        Şube ID             cuid...
+minPrice        Min fiyat           100000
+maxPrice        Max fiyat           500000
+isOpportunity   Fırsat mı?          true, false
+take            Kaç adet?           10
+skip            Kaç atlansın?       0
+q               Arama               daire
+
+================================================================================
+2.2.3 SETTINGS MODÜLÜ (Site Ayarları)
+================================================================================
+
+KONUM: api/src/settings/
+
+NE İŞE YARAR: Site geneli ayarları (renkler, logo, footer, mobil vb.)
+
+API ENDPOINT'LERİ:
+--------------------------------------------------------------------------------
+Method   URL                 Açıklama            Yetki
+--------------------------------------------------------------------------------
+GET      /settings           Ayarları getir      Herkese açık
+PATCH    /settings           Ayarları güncelle   JWT + ADMIN/MANAGER
+POST     /settings/upload    Görsel yükle        JWT + ADMIN/MANAGER
+
+ÖNEMLİ: SiteSetting tablosu 150+ alan içerir. Detayları DATABASE bölümünde.
+
+--------------------------------------------------------------------------------
+2.3 API ENDPOINT'LERİ TAM LİSTE
+--------------------------------------------------------------------------------
+
+AUTH:
+    POST   /auth/login                 # Giriş yap
+
+LISTINGS:
+    GET    /listings                   # İlanları listele
+    GET    /listings/:id               # Tek ilan getir
+    POST   /listings                   # İlan ekle
+    PATCH  /listings/:id               # İlan güncelle
+    DELETE /listings/:id               # İlan sil
+    POST   /listings/:id/images        # Görsel URL ekle
+    POST   /listings/:id/images/upload # Görsel yükle
+    POST   /listings/:id/images/upload-many  # Çoklu görsel yükle
+    PATCH  /listings/:id/images/:imageId/cover  # Kapak yap
+    DELETE /listings/:id/images/:imageId       # Görsel sil
+
+SETTINGS:
+    GET    /settings                   # Ayarları getir
+    PATCH  /settings                   # Ayarları güncelle
+    POST   /settings/upload            # Görsel yükle
+
+BANNERS:
+    GET    /banners                    # Aktif banner'lar
+    GET    /banners/admin              # Tüm banner'lar (admin)
+    GET    /banners/:id                # Tek banner
+    POST   /banners                    # Banner ekle
+    PATCH  /banners/:id                # Banner güncelle
+    DELETE /banners/:id                # Banner sil
+
+CITY-BUTTONS:
+    GET    /city-buttons               # Aktif butonlar
+    GET    /city-buttons/admin         # Tüm butonlar (admin)
+    POST   /city-buttons               # Buton ekle
+    POST   /city-buttons/upload        # Görsel yükle
+    POST   /city-buttons/reorder       # Sıralama
+    PATCH  /city-buttons/:id           # Buton güncelle
+    DELETE /city-buttons/:id           # Buton sil
+
+ACTION-BUTTONS:
+    GET    /action-buttons             # Aktif butonlar
+    GET    /action-buttons/admin       # Tüm butonlar (admin)
+    POST   /action-buttons             # Buton ekle
+    POST   /action-buttons/upload      # Görsel yükle
+    PATCH  /action-buttons/:id         # Buton güncelle
+    DELETE /action-buttons/:id         # Buton sil
+
+BRANCHES:
+    GET    /branches                   # Şubeleri listele
+    POST   /branches                   # Şube ekle
+    PATCH  /branches/:id               # Şube güncelle
+    DELETE /branches/:id               # Şube sil
+
+CITIES:
+    GET    /cities                     # Şehirleri listele
+    POST   /cities                     # Şehir ekle
+    POST   /cities/import/tr           # Türkiye şehirlerini import et
+    PATCH  /cities/:id                 # Şehir güncelle
+    DELETE /cities/:id                 # Şehir sil
+
+DISTRICTS:
+    GET    /districts                  # İlçeleri listele (?cityId=xxx)
+
+NEIGHBORHOODS:
+    GET    /neighborhoods              # Mahalleleri listele (?districtId=xxx)
+
+CONSULTANTS:
+    GET    /consultants                # Danışmanları listele
+    POST   /consultants                # Danışman ekle
+    PATCH  /consultants/:id            # Danışman güncelle
+    DELETE /consultants/:id            # Danışman sil
+
+REQUESTS:
+    POST   /requests/customer          # Müşteri talebi ekle
+    GET    /requests/customer          # Müşteri taleplerini listele
+    POST   /requests/consultant        # Danışman talebi ekle
+    GET    /requests/consultant        # Danışman taleplerini listele
+    PATCH  /requests/customer/:id/status   # Talep durumu güncelle
+    PATCH  /requests/consultant/:id/status # Talep durumu güncelle
+
+MENU-ITEMS:
+    GET    /menu-items                 # Aktif menü öğeleri
+    GET    /menu-items/admin           # Tüm menü öğeleri
+    POST   /menu-items                 # Menü öğesi ekle
+    POST   /menu-items/reorder         # Sıralama
+    PATCH  /menu-items/:id             # Menü güncelle
+    DELETE /menu-items/:id             # Menü sil
+
+FOOTER-ITEMS:
+    GET    /footer-items               # Aktif footer öğeleri
+    GET    /footer-items/admin         # Tüm footer öğeleri
+    POST   /footer-items               # Footer öğesi ekle
+    POST   /footer-items/reorder       # Sıralama
+    PATCH  /footer-items/:id           # Footer güncelle
+    DELETE /footer-items/:id           # Footer sil
+
+SOCIAL-LINKS:
+    GET    /social-links               # Aktif sosyal linkler
+    GET    /social-links/admin         # Tüm sosyal linkler
+    POST   /social-links               # Link ekle
+    POST   /social-links/reorder       # Sıralama
+    PATCH  /social-links/:id           # Link güncelle
+    DELETE /social-links/:id           # Link sil
+
+LISTING-LABELS:
+    GET    /listing-labels             # Aktif etiketler
+    GET    /listing-labels/admin       # Tüm etiketler
+    POST   /listing-labels             # Etiket ekle
+    POST   /listing-labels/reorder     # Sıralama
+    PATCH  /listing-labels/:id         # Etiket güncelle
+    DELETE /listing-labels/:id         # Etiket sil
+
+LISTING-ATTRIBUTES:
+    GET    /listing-attributes         # Özellik tanımları
+    POST   /listing-attributes         # Özellik ekle
+    PATCH  /listing-attributes/:id     # Özellik güncelle
+    DELETE /listing-attributes/:id     # Özellik sil
+
+PAGES:
+    GET    /pages                      # Yayınlanan sayfalar
+    GET    /pages/admin/all            # Tüm sayfalar
+    GET    /pages/slug/:slug           # Slug ile getir
+    POST   /pages                      # Sayfa ekle
+    PATCH  /pages/:id                  # Sayfa güncelle
+    DELETE /pages/:id                  # Sayfa sil
+
+BLOG:
+    GET    /blog                       # Yayınlanan yazılar
+    GET    /blog/admin/all             # Tüm yazılar
+    GET    /blog/slug/:slug            # Slug ile getir
+    POST   /blog                       # Yazı ekle
+    POST   /blog/upload                # Görsel yükle
+    PATCH  /blog/:id                   # Yazı güncelle
+    DELETE /blog/:id                   # Yazı sil
+
+PAGE-DESIGN:
+    GET    /page-design                # Tüm tasarımlar
+    GET    /page-design/:pageType      # Sayfa tasarımı getir
+    POST   /page-design/:pageType      # Tasarım kaydet
+    DELETE /page-design/:pageType      # Tasarım sil
+
+BACKUP:
+    POST   /admin/backup/full          # Tam yedek al
+    POST   /admin/backup/selective     # Seçili yedek al
+    GET    /admin/backup/list          # Yedekleri listele
+    GET    /admin/backup/download/:name/:file  # Yedek indir
+    DELETE /admin/backup/:name         # Yedek sil
+
+--------------------------------------------------------------------------------
+2.4 ÇEVRE DEĞİŞKENLERİ
+--------------------------------------------------------------------------------
+
+DOSYA: api/.env
+
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/ozcanaktasweb?schema=public"
+JWT_SECRET="cok-gizli-bir-anahtar-buraya"
+JWT_EXPIRES_IN="1d"
+PORT=3001
+CORS_ORIGIN="http://localhost:3000"
+
+Değişken          Açıklama                      Varsayılan
+--------------------------------------------------------------------------------
+DATABASE_URL      PostgreSQL bağlantı URL'i     Zorunlu
+JWT_SECRET        Token şifreleme anahtarı      dev-secret
+JWT_EXPIRES_IN    Token geçerlilik süresi       1d
+PORT              API portu                     3001
+CORS_ORIGIN       İzin verilen frontend URL     http://localhost:3000
+
+
+================================================================================
+                    BÖLÜM 3: FRONTEND (WEB)
+================================================================================
+
+--------------------------------------------------------------------------------
+3.1 WEB KLASÖR YAPISI
+--------------------------------------------------------------------------------
+
+KONUM: c:\ozcanaktasweb\web\
+
+web/
++-- app/                          # Sayfalar ve componentler
+|   +-- page.tsx                  # Ana sayfa (/)
+|   +-- layout.tsx                # Genel layout
+|   +-- globals.css               # TÜM STİLLER (ÖNEMLİ!)
+|   +-- favicon.ico               # Site ikonu
+|   +-- robots.ts                 # SEO - robots.txt
+|   +-- sitemap.ts                # SEO - sitemap.xml
+|   |
+|   +-- components/               # Ortak componentler
+|   |   +-- CorporateHeader.tsx   # Üst bar
+|   |   +-- CorporateFooter.tsx   # Alt bar
+|   |   +-- ListingsMap.tsx       # Harita
+|   |   +-- LocationPicker.tsx    # Konum seçici
+|   |   +-- SettingsProvider.tsx  # Ayar context'i
+|   |   +-- PageWrapper.tsx       # Sayfa sarmalayıcı
+|   |
+|   +-- [city]/                   # Dinamik şehir sayfaları
+|   |   +-- page.tsx              # /konya, /istanbul vb.
+|   |
+|   +-- admin/                    # Admin paneli (24 sayfa)
+|   |   +-- page.tsx              # Admin ana sayfa
+|   |   +-- login/page.tsx        # Giriş sayfası
+|   |   +-- settings/page.tsx     # Site ayarları
+|   |   +-- listings/page.tsx     # İlan yönetimi
+|   |   +-- [...diğerleri]
+|   |
+|   +-- arama/page.tsx            # Arama sayfası
+|   +-- firsatlar/page.tsx        # Fırsatlar sayfası
+|   +-- hakkimizda/page.tsx       # Hakkımızda sayfası
+|   +-- iletisim/page.tsx         # İletişim sayfası
+|   +-- subeler/page.tsx          # Şubeler sayfası
+|   |
+|   +-- listings/                 # İlan detay
+|   |   +-- [id]/page.tsx         # /listings/xxx
+|   |
+|   +-- requests/                 # Talep formları
+|       +-- customer/page.tsx     # Müşteri talep formu
+|       +-- consultant/page.tsx   # Danışman talep formu
+|
++-- lib/                          # Yardımcı fonksiyonlar
+|   +-- api.ts                    # API çağrıları
+|   +-- settings.ts               # Ayar tipleri
+|   +-- listings.ts               # İlan yardımcıları
+|
++-- public/                       # Statik dosyalar
+|   +-- logo.png                  # Logo
+|   +-- profile.png               # Profil resmi
+|   +-- [...svg dosyaları]
+|
++-- package.json                  # Paketler
++-- next.config.ts                # Next.js ayarları
++-- tsconfig.json                 # TypeScript ayarları
++-- .env.local                    # Çevre değişkenleri
+
+--------------------------------------------------------------------------------
+3.2 SAYFALAR
+--------------------------------------------------------------------------------
+
+ANA SAYFA
+--------------------------------------------------------------------------------
+DOSYA: web/app/page.tsx
+URL: http://localhost:3000/
+
+İÇERİK:
+    - Hero banner
+    - Şehir/şube butonları
+    - Aksiyon butonları
+    - Harita (ilanlar)
+    - Son eklenen ilanlar
+
+ARANACAK KELİMELER:
+    - home-page - Ana sayfa container class'ı
+    - hero - Banner alanı
+    - branches - Şube butonları
+    - action-buttons - Aksiyon butonları
+    - listings-grid - İlan grid'i
+
+ŞEHİR/ŞUBE SAYFASI
+--------------------------------------------------------------------------------
+DOSYA: web/app/[city]/page.tsx
+URL: http://localhost:3000/konya, http://localhost:3000/istanbul vb.
+
+İÇERİK:
+    - Şehre özel ilanlar
+    - Filtreler (kategori, fiyat, özellik)
+    - İlan listesi
+    - Şube iletişim bilgileri
+
+DİNAMİK PARAMETRE: [city] = şehir slug'ı
+
+İLAN DETAY SAYFASI
+--------------------------------------------------------------------------------
+DOSYA: web/app/listings/[id]/page.tsx
+URL: http://localhost:3000/listings/xxx
+
+İÇERİK:
+    - Görsel galerisi
+    - İlan detayları
+    - Özellikler
+    - Konum haritası
+    - İletişim butonları
+    - Danışman bilgileri
+
+ADMIN SAYFALARI
+--------------------------------------------------------------------------------
+KONUM: web/app/admin/
+
+Sayfa               Dosya                    URL                   Açıklama
+--------------------------------------------------------------------------------
+Dashboard           page.tsx                 /admin                Ana panel
+Giriş               login/page.tsx           /admin/login          Giriş formu
+Ayarlar             settings/page.tsx        /admin/settings       Site ayarları
+İlanlar             listings/page.tsx        /admin/listings       İlan yönetimi
+Şubeler             branches/page.tsx        /admin/branches       Şube yönetimi
+Şehirler            cities/page.tsx          /admin/cities         Şehir yönetimi
+Danışmanlar         consultants/page.tsx     /admin/consultants    Danışman yönetimi
+Banner'lar          banners/page.tsx         /admin/banners        Banner yönetimi
+Şehir Butonları     city-buttons/page.tsx    /admin/city-buttons   Şehir butonları
+Aksiyon Butonları   action-buttons/page.tsx  /admin/action-buttons Aksiyon butonları
+Menü                menu/page.tsx            /admin/menu           Menü yönetimi
+Footer              footer-items/page.tsx    /admin/footer-items   Footer yönetimi
+Sosyal Medya        social-links/page.tsx    /admin/social-links   Sosyal linkler
+İlan Etiketleri     listing-labels/page.tsx  /admin/listing-labels Etiket yönetimi
+Sayfalar            pages/page.tsx           /admin/pages          Dinamik sayfalar
+Blog                blog/page.tsx            /admin/blog           Blog yönetimi
+Mobil Ayarlar       mobile-settings/page.tsx /admin/mobile-settings Mobil ayarlar
+SEO                 seo/page.tsx             /admin/seo            SEO ayarları
+Talepler            requests/page.tsx        /admin/requests       Talep yönetimi
+Yedekleme           backup/page.tsx          /admin/backup         Yedekleme
+
+--------------------------------------------------------------------------------
+3.3 COMPONENTLER
+--------------------------------------------------------------------------------
+
+KONUM: web/app/components/
+
+CORPORATEHEADER.TSX (ÜST BAR)
+--------------------------------------------------------------------------------
+NE İŞE YARAR: Sitenin üst barı - navigasyon, logo, sosyal medya, arama
+
+YAPI:
+    Header
+    +-- Nav Row (Mavi bar)
+    |   +-- Menü linkleri
+    |   +-- Danışman Girişi butonu
+    |
+    +-- Logo Row (Beyaz bar)
+        +-- Sosyal medya ikonları (sol)
+        +-- Logo + Alt yazı (orta)
+        +-- Arama barı (sağ)
+
+ARANACAK CLASS'LAR:
+    - .corp-header - Ana header container
+    - .corp-nav-row - Üst navigasyon barı
+    - .corp-logo-row - Logo satırı
+    - .corp-social - Sosyal medya ikonları
+    - .corp-search - Arama barı
+
+CORPORATEFOOTER.TSX (ALT BAR)
+--------------------------------------------------------------------------------
+NE İŞE YARAR: Sitenin alt barı - iletişim, linkler, sosyal medya
+
+YAPI:
+    Footer
+    +-- Logo + Açıklama
+    +-- Hızlı Linkler
+    +-- İletişim Bilgileri
+    +-- Sosyal Medya
+
+ARANACAK CLASS'LAR:
+    - .corp-footer - Ana footer container
+    - .corp-footer-inner - İç container
+    - .corp-footer-col - Sütunlar
+
+LISTINGSMAP.TSX (HARİTA)
+--------------------------------------------------------------------------------
+NE İŞE YARAR: İlanları harita üzerinde gösterir
+
+KULLANILAN TEKNOLOJİ: Leaflet + react-leaflet
+
+ÖZELLİKLER:
+    - İlan konumlarını marker olarak gösterir
+    - Popup ile ilan özeti
+    - Dinamik import (SSR yok)
+
+--------------------------------------------------------------------------------
+3.4 LAYOUT VE METADATA
+--------------------------------------------------------------------------------
+
+DOSYA: web/app/layout.tsx
+
+NE İŞE YARAR:
+    - Tüm sayfalar için ortak layout
+    - SEO metadata
+    - Font yükleme
+    - Analytics kodları
+
+
+================================================================================
+                    BÖLÜM 4: CSS VE TASARIM
+================================================================================
+
+ANA DOSYA: web/app/globals.css
+
+ÖNEMLİ: Bu dosya ~2100 satır içerir ve tüm stilleri barındırır.
+
+--------------------------------------------------------------------------------
+4.1 CSS DEĞİŞKENLERİ
+--------------------------------------------------------------------------------
+
+KONUM: Satır 1-50 arası
+ARANACAK: :root
+
+:root {
+  /* RENKLER */
+  --color-primary: #0a4ea3;      /* Ana mavi renk */
+  --color-accent: #e53935;       /* Vurgu kırmızı */
+  --color-bg: #f4f6f9;           /* Arkaplan gri */
+  --color-card: #ffffff;         /* Kart beyaz */
+  --color-text: #1e293b;         /* Metin koyu */
+  --color-muted: #64748b;        /* Soluk metin */
+  --color-border: #e2e8f0;       /* Kenarlık */
+  
+  /* FONTLAR */
+  --font-primary: 'Manrope', 'Inter', sans-serif;
+  
+  /* BOYUTLAR */
+  --radius: 12px;                /* Köşe yuvarlaklığı */
+  --shadow: 0 1px 3px rgba(0,0,0,0.1);  /* Gölge */
+}
+
+ÖRNEK DEĞİŞİKLİK - Ana Rengi Yeşil Yapma:
+    :root {
+      --color-primary: #10b981;  /* Mavi yerine yeşil */
+    }
+
+--------------------------------------------------------------------------------
+4.2 HEADER (ÜST BAR)
+--------------------------------------------------------------------------------
+
+KONUM: Satır 245-300 arası
+ARANACAK: .corp-header, .corp-nav-row
+
+/* Ana header container */
+.corp-header {
+  background: var(--color-primary);  /* Mavi arkaplan */
+  color: #ffffff;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+
+/* Üst navigasyon barı */
+.corp-nav-row {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 10px 18px;              /* İç boşluk */
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+ÖRNEK DEĞİŞİKLİK - Header Yüksekliğini Artırma:
+    .corp-nav-row {
+      padding: 15px 18px;  /* 10px yerine 15px */
+    }
+
+--------------------------------------------------------------------------------
+4.3 LOGO ALANI
+--------------------------------------------------------------------------------
+
+KONUM: Satır 300-340 arası
+ARANACAK: .corp-logo-row, .corp-logo, .corp-logo-img
+
+/* Logo satırı */
+.corp-logo-row {
+  background: #ffffff;
+  padding: 14px 0;
+}
+
+/* Logo görseli */
+.corp-logo-img {
+  height: 44px;                    /* Logo yüksekliği */
+  width: auto;
+}
+
+ÖRNEK DEĞİŞİKLİK - Logo Boyutunu Büyütme:
+    .corp-logo-img {
+      height: 60px;  /* 44px yerine 60px */
+    }
+
+--------------------------------------------------------------------------------
+4.4 SOSYAL MEDYA İKONLARI
+--------------------------------------------------------------------------------
+
+KONUM: Satır 390-410 arası
+ARANACAK: .corp-social
+
+.corp-social a {
+  width: 36px;                     /* İkon kutu genişliği */
+  height: 36px;                    /* İkon kutu yüksekliği */
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.15);
+  font-size: 16px;                 /* İkon boyutu */
+}
+
+ÖRNEK DEĞİŞİKLİK - İkon Boyutunu Küçültme:
+    .corp-social a {
+      width: 28px;   /* 36px yerine 28px */
+      height: 28px;
+      font-size: 12px;  /* 16px yerine 12px */
+    }
+
+--------------------------------------------------------------------------------
+4.5 ARAMA BARI
+--------------------------------------------------------------------------------
+
+KONUM: Satır 345-395 arası
+ARANACAK: .corp-search, .corp-search-input
+
+.corp-search-input {
+  width: 120px;                    /* Arama kutusu genişliği */
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  color: #ffffff;
+  font-size: 13px;
+}
+
+ÖRNEK DEĞİŞİKLİK - Arama Kutusunu Genişletme:
+    .corp-search-input {
+      width: 180px;  /* 120px yerine 180px */
+    }
+
+--------------------------------------------------------------------------------
+4.6 BANNER/HERO
+--------------------------------------------------------------------------------
+
+KONUM: Çeşitli yerler
+ARANACAK: .hero, .banner
+
+/* Ana sayfada banner */
+.home-page .banner {
+  max-height: 300px;               /* Maksimum yükseklik */
+  min-height: 180px;               /* Minimum yükseklik */
+  aspect-ratio: 21/9;              /* En-boy oranı */
+}
+
+ÖRNEK DEĞİŞİKLİK - Banner Yüksekliğini Artırma:
+    .home-page .banner {
+      max-height: 400px;  /* 300px yerine 400px */
+      min-height: 250px;  /* 180px yerine 250px */
+    }
+
+--------------------------------------------------------------------------------
+4.7 ŞUBE BUTONLARI
+--------------------------------------------------------------------------------
+
+KONUM: Satır 600-700 arası
+ARANACAK: .branch-btn, .branches
+
+/* Şube butonları container */
+.home-page .branches {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 12px;
+}
+
+/* Tek buton */
+.home-page .branch-btn {
+  padding: 16px 12px;
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;             /* Köşe yuvarlaklığı */
+}
+
+ÖRNEK DEĞİŞİKLİK - Butonları Büyütme:
+    .home-page .branch-btn {
+      padding: 24px 16px;  /* Daha fazla padding */
+    }
+
+--------------------------------------------------------------------------------
+4.8 AKSİYON BUTONLARI
+--------------------------------------------------------------------------------
+
+KONUM: Satır 750-800 arası
+ARANACAK: .action-btn, .action-buttons
+
+/* Tek buton */
+.home-page .action-btn {
+  padding: 16px 8px;
+  background: var(--color-primary);
+  color: #ffffff;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+ÖRNEK DEĞİŞİKLİK - Buton Rengini Değiştirme:
+    .home-page .action-btn {
+      background: #10b981;  /* Mavi yerine yeşil */
+    }
+
+--------------------------------------------------------------------------------
+4.9 İLAN KARTLARI
+--------------------------------------------------------------------------------
+
+KONUM: Satır 850-950 arası
+ARANACAK: .listing-card
+
+/* İlan kartı */
+.listing-card {
+  background: #ffffff;
+  border: 1px solid var(--color-border);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.listing-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.1);
+}
+
+ÖRNEK DEĞİŞİKLİK - Kart Köşelerini Daha Yuvarlak Yapma:
+    .listing-card {
+      border-radius: 20px;  /* 12px yerine 20px */
+    }
+
+--------------------------------------------------------------------------------
+4.10 FOOTER
+--------------------------------------------------------------------------------
+
+KONUM: Satır 415-500 arası
+ARANACAK: .corp-footer
+
+/* Footer ana container */
+.corp-footer {
+  background: #0a4ea3;             /* Mavi arkaplan */
+  color: #ffffff;
+  padding: 40px 0 24px;
+}
+
+/* Footer içerik */
+.corp-footer-inner {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);  /* 4 sütun */
+  gap: 32px;
+}
+
+ÖRNEK DEĞİŞİKLİK - Footer Arkaplan Rengini Değiştirme:
+    .corp-footer {
+      background: #1e293b;  /* Mavi yerine koyu gri */
+    }
+
+--------------------------------------------------------------------------------
+4.11 MOBİL AYARLAR
+--------------------------------------------------------------------------------
+
+KONUM: Satır 1500+ arası
+ARANACAK: @media (max-width: 768px)
+
+MOBİL CSS DEĞİŞKENLERİ:
+--------------------------------------------------------------------------------
+:root {
+  --mobile-header-padding: 4px 8px;
+  --mobile-nav-font-size: 10px;
+  --mobile-logo-row-padding: 12px 8px;
+  --mobile-logo-height: 28px;
+  --mobile-logo-sub-size: 9px;
+  --mobile-social-size: 22px;
+  --mobile-search-width: 40px;
+  --mobile-search-height: 24px;
+  --mobile-banner-height: 120px;
+  --mobile-banner-radius: 8px;
+  --mobile-branch-columns: 3;
+  --mobile-branch-gap: 6px;
+  --mobile-branch-radius: 8px;
+  --mobile-action-columns: 2;
+  --mobile-action-gap: 6px;
+  --mobile-action-height: 60px;
+  --mobile-action-font-size: 10px;
+  --mobile-action-radius: 8px;
+  --mobile-listing-columns: 2;
+  --mobile-listing-gap: 8px;
+}
+
+MOBİL BREAKPOINT'LER:
+--------------------------------------------------------------------------------
+Breakpoint       Ekran Genişliği     Kullanım
+--------------------------------------------------------------------------------
+Tablet           max-width: 1024px   Tablet ve küçük laptop
+Mobil            max-width: 768px    Telefon (yatay)
+Küçük Mobil      max-width: 480px    Telefon (dikey)
+Çok Küçük        max-width: 360px    Küçük telefonlar
+
+--------------------------------------------------------------------------------
+4.12 ADMIN PANEL
+--------------------------------------------------------------------------------
+
+KONUM: Satır 1100-1400 arası
+ARANACAK: .admin-
+
+/* Admin sayfa container */
+.admin-page {
+  min-height: 100vh;
+  background: var(--color-bg);
+  padding: 20px 0;
+}
+
+/* Admin kart */
+.admin-card {
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+
+================================================================================
+                    BÖLÜM 5: DATABASE
+================================================================================
+
+DOSYA: api/prisma/schema.prisma
+
+--------------------------------------------------------------------------------
+5.1 TABLO LİSTESİ
+--------------------------------------------------------------------------------
+
+#   Tablo                       Açıklama
+--------------------------------------------------------------------------------
+1   User                        Kullanıcılar (giriş yapanlar)
+2   Consultant                  Danışmanlar
+3   Branch                      Şubeler
+4   City                        Şehirler
+5   District                    İlçeler
+6   Neighborhood                Mahalleler
+7   Listing                     İlanlar
+8   ListingImage                İlan görselleri
+9   ListingAttributeDefinition  İlan özellik tanımları
+10  CustomerRequest             Müşteri talepleri
+11  ConsultantRequest           Danışman talepleri
+12  SiteSetting                 Site ayarları (ÇOK ÖNEMLİ!)
+13  FooterItem                  Footer öğeleri
+14  ListingLabel                İlan etiketleri
+15  CityButton                  Şehir butonları
+16  Banner                      Banner'lar
+17  ActionButton                Aksiyon butonları
+18  PageSetting                 Dinamik sayfalar
+19  BlogPost                    Blog yazıları
+20  MenuItem                    Menü öğeleri
+21  PageDesign                  Sayfa tasarımları
+22  SocialLink                  Sosyal medya linkleri
+
+--------------------------------------------------------------------------------
+5.2 SİTESETTING TABLOSU
+--------------------------------------------------------------------------------
+
+Bu tablo site genelindeki TÜM ayarları içerir.
+
+TEMEL AYARLAR:
+--------------------------------------------------------------------------------
+Alan              Tip        Açıklama
+--------------------------------------------------------------------------------
+id                String     Varsayılan: "default"
+siteName          String     Site adı
+logoUrl           String?    Logo URL
+ownerName         String?    Site sahibi adı
+ownerTitle        String?    Site sahibi unvanı
+showOwnerTitle    Boolean    Unvan gösterilsin mi?
+phoneNumber       String?    Telefon
+whatsappNumber    String?    WhatsApp
+email             String?    E-posta
+primaryColor      String?    Ana renk
+accentColor       String?    Vurgu rengi
+backgroundColor   String?    Arkaplan rengi
+textColor         String?    Metin rengi
+
+MOBİL AYARLAR:
+--------------------------------------------------------------------------------
+Alan                     Tip       Açıklama
+--------------------------------------------------------------------------------
+mobileHeaderPadding      String?   Header padding
+mobileNavFontSize        Int?      Nav font boyutu
+mobileLogoRowPadding     String?   Logo satırı padding
+mobileLogoHeight         Int?      Logo yüksekliği
+mobileLogoSubSize        Int?      Logo alt yazı boyutu
+mobileLogoAlign          String?   Logo hizalama
+mobileSocialSize         Int?      Sosyal ikon boyutu
+mobileSocialShow         Boolean   Sosyal ikonlar gösterilsin mi?
+mobileSearchWidth        Int?      Arama genişliği
+mobileSearchHeight       Int?      Arama yüksekliği
+mobileSearchShow         Boolean   Arama gösterilsin mi?
+mobileBannerHeight       Int?      Banner yüksekliği
+mobileBannerBorderRadius Int?      Banner köşe yuvarlaklığı
+mobileBranchColumns      Int?      Şube buton sütun sayısı
+mobileBranchGap          Int?      Şube buton boşluğu
+mobileBranchBorderRadius Int?      Şube buton köşe yuvarlaklığı
+mobileActionColumns      Int?      Aksiyon buton sütun sayısı
+mobileActionGap          Int?      Aksiyon buton boşluğu
+mobileActionHeight       Int?      Aksiyon buton yüksekliği
+mobileActionFontSize     Int?      Aksiyon buton font boyutu
+mobileListingColumns     Int?      İlan kartı sütun sayısı
+mobileListingGap         Int?      İlan kartı boşluğu
+
+SEO AYARLARI:
+--------------------------------------------------------------------------------
+Alan                     Tip       Açıklama
+--------------------------------------------------------------------------------
+metaTitle                String?   Sayfa başlığı
+metaDescription          String?   Sayfa açıklaması
+metaKeywords             String?   Anahtar kelimeler
+ogImage                  String?   Paylaşım görseli
+canonicalUrl             String?   Canonical URL
+googleAnalyticsId        String?   GA4 ID
+googleTagManagerId       String?   GTM ID
+facebookPixelId          String?   Facebook Pixel ID
+
+--------------------------------------------------------------------------------
+5.4 İLİŞKİLER
+--------------------------------------------------------------------------------
+
+User ------+-------> Consultant (1:1)
+           +-------> Listing (1:N, createdBy)
+
+Consultant +-------> Branch (N:1)
+           +-------> Listing (1:N)
+
+Branch ----+-------> City (N:1)
+           +-------> Listing (1:N)
+           +-------> Consultant (1:N)
+
+City ------+-------> District (1:N)
+           +-------> Neighborhood (1:N)
+           +-------> Branch (1:N)
+           +-------> Listing (1:N)
+           +-------> CityButton (1:N)
+
+District --+-------> Neighborhood (1:N)
+           +-------> Listing (1:N)
+
+Neighborhood ------> Listing (1:N)
+
+Listing -----------> ListingImage (1:N)
+
+
+================================================================================
+                    BÖLÜM 6: ADMIN PANEL
+================================================================================
+
+--------------------------------------------------------------------------------
+6.1 ADMIN SAYFALARI
+--------------------------------------------------------------------------------
+
+GİRİŞ YAPMA:
+    URL: http://localhost:3000/admin/login
+    1. E-posta ve şifre girin
+    2. "Giriş Yap" butonuna tıklayın
+    3. JWT token localStorage'a kaydedilir
+    4. Admin panele yönlendirilirsiniz
+
+DASHBOARD:
+    URL: http://localhost:3000/admin
+    - İstatistikler (toplam ilan, şube, danışman sayısı)
+    - Hızlı erişim butonları
+    - Son aktiviteler
+
+SİTE AYARLARI:
+    URL: http://localhost:3000/admin/settings
+    - Temel bilgiler (site adı, logo, iletişim)
+    - Renk ayarları
+    - Header ayarları
+    - Footer ayarları
+    - SEO ayarları
+
+MOBİL AYARLAR:
+    URL: http://localhost:3000/admin/mobile-settings
+    Sekmeler:
+    1. Header & Logo - Üst bar ve logo ayarları
+    2. Banner - Banner yükseklik ve köşe ayarları
+    3. Şube Butonları - Sütun sayısı, boşluk, boyut
+    4. Aksiyon Butonları - Sütun sayısı, yükseklik, font
+    5. İlan Kartları - Grid ayarları
+
+
+================================================================================
+                    BÖLÜM 7: ÖZEL KONULAR
+================================================================================
+
+--------------------------------------------------------------------------------
+7.1 AUTHENTICATION
+--------------------------------------------------------------------------------
+
+TOKEN ALMA:
+    const response = await fetch('http://localhost:3001/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        email: 'admin@example.com',
+        password: 'şifre'
+      })
+    });
+    
+    const data = await response.json();
+    localStorage.setItem('auth_token', data.access_token);
+
+TOKEN KULLANMA:
+    const token = localStorage.getItem('auth_token');
+    
+    const response = await fetch('http://localhost:3001/listings', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`
+      },
+      body: JSON.stringify({ title: 'Yeni İlan' })
+    });
+
+ROL KONTROLÜ:
+--------------------------------------------------------------------------------
+Rol               Yetkiler
+--------------------------------------------------------------------------------
+ADMIN             Her şeye tam erişim
+MANAGER           Çoğu admin özelliği
+BRANCH_MANAGER    Kendi şubesini yönetme
+CONSULTANT        Kendi ilanlarını yönetme
+
+--------------------------------------------------------------------------------
+7.2 DOSYA YÜKLEME
+--------------------------------------------------------------------------------
+
+UPLOAD ENDPOINT'LERİ:
+--------------------------------------------------------------------------------
+Endpoint                           Amaç                 Max Boyut
+--------------------------------------------------------------------------------
+POST /settings/upload              Ayar görselleri      5MB
+POST /listings/:id/images/upload   İlan görseli         10MB
+POST /banners (form-data)          Banner görseli       10MB
+POST /city-buttons/upload          Şehir buton görseli  5MB
+
+DOSYA KONUMU:
+    Yüklenen dosyalar: api/uploads/
+    URL formatı: http://localhost:3001/uploads/dosya-adi.jpg
+
+--------------------------------------------------------------------------------
+7.3 SEO
+--------------------------------------------------------------------------------
+
+METADATA - Layout'ta otomatik oluşturulur
+SITEMAP - web/app/sitemap.ts - Otomatik oluşturulur
+ROBOTS.TXT - web/app/robots.ts
+
+--------------------------------------------------------------------------------
+7.4 MOBİL UYUMLULUK
+--------------------------------------------------------------------------------
+
+RESPONSIVE TASARIM - CSS Media Query'ler ile:
+    /* Tablet */
+    @media (max-width: 1024px) { ... }
+    
+    /* Mobil */
+    @media (max-width: 768px) { ... }
+    
+    /* Küçük Mobil */
+    @media (max-width: 480px) { ... }
+
+MOBİL VIEWPORT - Layout'ta:
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+
+================================================================================
+                    BÖLÜM 8: SORUN GİDERME
+================================================================================
+
+--------------------------------------------------------------------------------
+8.1 SIK KARŞILAŞILAN HATALAR
+--------------------------------------------------------------------------------
+
+"Cannot connect to database"
+    Sebep: PostgreSQL çalışmıyor
+    Çözüm:
+        docker-compose up -d
+        docker ps
+
+"JWT expired"
+    Sebep: Token süresi dolmuş
+    Çözüm:
+        localStorage.removeItem('auth_token');
+        // Yeniden giriş yapın
+
+"CORS error"
+    Sebep: API izinleri yanlış
+    Çözüm: api/.env dosyasında:
+        CORS_ORIGIN="http://localhost:3000"
+
+"Module not found"
+    Sebep: Paketler eksik
+    Çözüm:
+        npm install
+
+"Port already in use"
+    Sebep: Port başka uygulama tarafından kullanılıyor
+    Çözüm:
+        netstat -ano | findstr :3001
+        taskkill /PID <PID> /F
+
+--------------------------------------------------------------------------------
+8.2 DEBUG İPUÇLARI
+--------------------------------------------------------------------------------
+
+API LOGLARI:
+    Terminal'de API çalışırken loglar görünür.
+
+BROWSER DEVTOOLS:
+    - Console: JavaScript hataları
+    - Network: API istekleri
+    - Application > Local Storage: Token
+
+DATABASE KONTROLÜ:
+    docker exec -it ozcanaktasweb-postgres psql -U postgres -d ozcanaktasweb
+    \dt                                # Tabloları listele
+    SELECT * FROM "SiteSetting";       # Kayıtları gör
+    \q                                 # Çıkış
+
+PRISMA STUDIO:
+    cd api
+    npx prisma studio
+    # Browser'da http://localhost:5555 açılır
+
+
+================================================================================
+                    EK: HIZLI REFERANS KARTLARI
+================================================================================
+
+DOSYA KONUMLARI
+--------------------------------------------------------------------------------
+Ne?                 Nerede?
+--------------------------------------------------------------------------------
+Tüm CSS             web/app/globals.css
+Ana Sayfa           web/app/page.tsx
+Header              web/app/components/CorporateHeader.tsx
+Footer              web/app/components/CorporateFooter.tsx
+Layout              web/app/layout.tsx
+API Başlangıç       api/src/main.ts
+Database Şema       api/prisma/schema.prisma
+Site Ayarları       api/src/settings/
+İlan Modülü         api/src/listings/
+
+KOMUTLAR
+--------------------------------------------------------------------------------
+Ne?                 Komut
+--------------------------------------------------------------------------------
+API başlat          cd api && npm run start:dev
+Web başlat          cd web && npm run dev
+Database başlat     docker-compose up -d
+Prisma client       npx prisma generate
+Database push       npx prisma db push
+Prisma studio       npx prisma studio
+
+PORTLAR
+--------------------------------------------------------------------------------
+Servis              Port
+--------------------------------------------------------------------------------
+Web                 3000
+API                 3001
+PostgreSQL          5432
+Prisma Studio       5555
+
+CSS CLASS REFERANSI
+--------------------------------------------------------------------------------
+Element             Class
+--------------------------------------------------------------------------------
+Header              .corp-header
+Nav Bar             .corp-nav-row
+Logo Satırı         .corp-logo-row-inner
+Logo                .corp-logo
+Sosyal İkonlar      .corp-social
+Arama               .corp-search
+Footer              .corp-footer
+Ana Sayfa           .home-page
+Banner              .banner, .hero
+Şube Butonları      .branches, .branch-btn
+Aksiyon Butonları   .action-buttons, .action-btn
+İlan Kartı          .listing-card
+Admin               .admin-page, .admin-card
+
+
+================================================================================
+Son Güncelleme: Ocak 2026
+Hazırlayan: Cursor AI
+================================================================================

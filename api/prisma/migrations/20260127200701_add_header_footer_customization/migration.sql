@@ -1,0 +1,18 @@
+-- AlterTable
+ALTER TABLE "SiteSetting" ADD COLUMN     "bannerHeight" INTEGER,
+ADD COLUMN     "bannerWidth" INTEGER,
+ADD COLUMN     "footerBgColor" TEXT,
+ADD COLUMN     "footerBgGradient" TEXT,
+ADD COLUMN     "footerBgImage" TEXT,
+ADD COLUMN     "footerFont" TEXT,
+ADD COLUMN     "footerFontSize" INTEGER,
+ADD COLUMN     "footerTextColor" TEXT,
+ADD COLUMN     "headerBgColor" TEXT,
+ADD COLUMN     "headerBgGradient" TEXT,
+ADD COLUMN     "headerBgImage" TEXT,
+ADD COLUMN     "headerNavColor" TEXT,
+ADD COLUMN     "headerNavFont" TEXT,
+ADD COLUMN     "headerNavFontSize" INTEGER,
+ADD COLUMN     "mainBgColor" TEXT,
+ADD COLUMN     "mainBgImage" TEXT,
+ADD COLUMN     "showOwnerTitle" BOOLEAN NOT NULL DEFAULT true;
