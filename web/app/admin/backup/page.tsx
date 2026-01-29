@@ -128,7 +128,7 @@ export default function AdminBackupPage() {
     setProgress(["Seçili yedekleme başlatılıyor..."]);
     setMessage({ type: "", text: "" });
 
-    const selectedItems = [];
+    const selectedItems: string[] = [];
     if (options.includeSourceCode) selectedItems.push("Kaynak Kod");
     if (options.includeDatabase) selectedItems.push("Database");
     if (options.includeUploads) selectedItems.push("Uploads");
