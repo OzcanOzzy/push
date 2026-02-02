@@ -1,7 +1,6 @@
 import "dotenv/config";
 import bcrypt from "bcryptjs";
 import {
-  ListingAttributeType,
   ListingCategory,
   ListingStatus,
   Prisma,
@@ -10,6 +9,9 @@ import {
 } from "@prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import { Pool } from "pg";
+import { seedListingAttributes } from "./seed-listing-attributes";
+import { seedTurkeyLocations, TURKEY_PROVINCES } from "./seed-turkey-locations";
+import { seedNeighborhoods } from "./seed-neighborhoods";
 
 const databaseUrl = process.env.DATABASE_URL;
 if (!databaseUrl) {
@@ -27,21 +29,29 @@ const adapter = new PrismaPg(pool);
 const prisma = new PrismaClient({ adapter });
 
 async function clearData() {
+  console.log("Clearing existing data...");
   await prisma.consultantRequest.deleteMany();
   await prisma.customerRequest.deleteMany();
   await prisma.listingImage.deleteMany();
   await prisma.listing.deleteMany();
+  await prisma.listingAttributeDefinition.deleteMany();
   await prisma.consultant.deleteMany();
   await prisma.branch.deleteMany();
+  await prisma.cityButton.deleteMany();
+  await prisma.actionButton.deleteMany();
   await prisma.neighborhood.deleteMany();
   await prisma.district.deleteMany();
   await prisma.city.deleteMany();
   await prisma.user.deleteMany();
+  // await prisma.siteSetting.deleteMany(); // Bu satırı kaldırdım
+  console.log("Data cleared.");
 }
 
 async function main() {
   await clearData();
 
+  // ========== USERS ==========
+  console.log("Creating users...");
   const [adminPassword, consultantPassword] = await Promise.all([
     bcrypt.hash("ChangeMe123!", 10),
     bcrypt.hash("Consultant123!", 10),
@@ -65,43 +75,64 @@ async function main() {
     },
   });
 
-  const konya = await prisma.city.create({
-    data: { name: "Konya", slug: "konya" },
-  });
-  const karaman = await prisma.city.create({
-    data: { name: "Karaman", slug: "karaman" },
-  });
+  // ========== TURKEY LOCATIONS (81 Province + All Districts) ==========
+  console.log("Seeding Turkey locations...");
+  await seedTurkeyLocations(prisma);
 
-  const selcuklu = await prisma.district.create({
-    data: { name: "Selçuklu", slug: "selcuklu", cityId: konya.id },
-  });
-  const larende = await prisma.district.create({
-    data: { name: "Larende", slug: "larende", cityId: karaman.id },
-  });
+  // Önemli şehirleri al (branch ve listing için)
+  const konya = await prisma.city.findFirst({ where: { slug: "konya" } });
+  const karaman = await prisma.city.findFirst({ where: { slug: "karaman" } });
+  const ankara = await prisma.city.findFirst({ where: { slug: "ankara" } });
+  const istanbul = await prisma.city.findFirst({ where: { slug: "istanbul" } });
 
-  const bosna = await prisma.neighborhood.create({
-    data: {
-      name: "Bosna Hersek",
-      slug: "bosna-hersek",
-      cityId: konya.id,
-      districtId: selcuklu.id,
-    },
-  });
-  const merkez = await prisma.neighborhood.create({
-    data: {
-      name: "Merkez",
-      slug: "merkez",
-      cityId: karaman.id,
-      districtId: larende.id,
-    },
-  });
+  if (!konya || !karaman || !ankara || !istanbul) {
+    throw new Error("Core cities not found after seeding!");
+  }
 
+  // Önemli ilçeleri al
+  const selcuklu = await prisma.district.findFirst({ where: { name: "Selçuklu", cityId: konya.id } });
+  const meram = await prisma.district.findFirst({ where: { name: "Meram", cityId: konya.id } });
+  const karatay = await prisma.district.findFirst({ where: { name: "Karatay", cityId: konya.id } });
+  const karamanMerkez = await prisma.district.findFirst({ where: { name: "Merkez", cityId: karaman.id } });
+  const cankaya = await prisma.district.findFirst({ where: { name: "Çankaya", cityId: ankara.id } });
+  const kadikoy = await prisma.district.findFirst({ where: { name: "Kadıköy", cityId: istanbul.id } });
+
+  if (!selcuklu || !karamanMerkez) {
+    throw new Error("Core districts not found after seeding!");
+  }
+
+  // ========== NEIGHBORHOODS (Tüm Türkiye - GitHub'dan) ==========
+  console.log("Seeding neighborhoods from GitHub (this may take a few minutes)...");
+  try {
+    await seedNeighborhoods(prisma);
+  } catch (error) {
+    console.log("Warning: Could not seed neighborhoods from GitHub:", error);
+    console.log("Continuing with minimal sample neighborhoods...");
+    
+    // Fallback: minimal mahalleler
+    const sampleNeighborhoods = [
+      { name: "Bosna Hersek", cityId: konya.id, districtId: selcuklu.id },
+      { name: "Yazır", cityId: konya.id, districtId: selcuklu.id },
+      { name: "Alacasuluk", cityId: karaman.id, districtId: karamanMerkez.id },
+    ];
+    for (const n of sampleNeighborhoods) {
+      await prisma.neighborhood.create({
+        data: { name: n.name, slug: n.name.toLowerCase().replace(/\s+/g, "-"), cityId: n.cityId, districtId: n.districtId },
+      });
+    }
+  }
+  console.log("Neighborhoods seeding complete.");
+
+  // ========== BRANCHES ==========
+  console.log("Creating branches...");
   const konyaBranch = await prisma.branch.create({
     data: {
       name: "Konya Merkez",
       slug: "konya-merkez",
       cityId: konya.id,
       address: "Selçuklu, Konya",
+      phone: "0332 123 45 67",
+      whatsappNumber: "0543 306 14 99",
     },
   });
 
@@ -111,10 +142,14 @@ async function main() {
       slug: "karaman-merkez",
       cityId: karaman.id,
       address: "Karaman Merkez",
+      phone: "0338 123 45 67",
+      whatsappNumber: "0543 306 14 99",
     },
   });
 
-  const consultant = await prisma.consultant.create({
+  // ========== CONSULTANTS ==========
+  console.log("Creating consultants...");
+  await prisma.consultant.create({
     data: {
       userId: consultantUser.id,
       branchId: konyaBranch.id,
@@ -125,1279 +160,108 @@ async function main() {
     },
   });
 
-  await prisma.siteSetting.upsert({
-    where: { id: "default" },
-    update: {},
-    create: {
-      id: "default",
-      siteName: "Emlaknomi",
-      ownerName: "Özcan Aktaş",
-      ownerTitle: "Danışman",
-      phoneNumber: "0543 306 14 99",
+
+  // ========== CITY BUTTONS (Şube Butonları) ==========
+  console.log("Creating city buttons...");
+  await prisma.cityButton.create({
+    data: {
+      name: "Konya",
+      slug: "konya",
+      cityId: konya.id,
+      address: "Selçuklu, Konya",
+      phone: "0332 123 45 67",
       whatsappNumber: "0543 306 14 99",
-      email: "emlaknomiozcan@gmail.com",
-      supportEmail: "destek@ozcanaktas.com",
-      primaryColor: "#1a436e",
-      accentColor: "#e20b0b",
-      backgroundColor: "#e9e9f0",
-      textColor: "#122033",
+      icon: "fa-solid fa-location-dot",
+      sortOrder: 0,
+      isActive: true,
+    },
+  });
+  await prisma.cityButton.create({
+    data: {
+      name: "Karaman",
+      slug: "karaman",
+      cityId: karaman.id,
+      address: "Karaman Merkez",
+      phone: "0338 123 45 67",
+      whatsappNumber: "0543 306 14 99",
+      icon: "fa-solid fa-location-dot",
+      sortOrder: 1,
+      isActive: true,
+    },
+  });
+  await prisma.cityButton.create({
+    data: {
+      name: "Ankara",
+      slug: "ankara",
+      cityId: ankara.id,
+      icon: "fa-solid fa-location-dot",
+      sortOrder: 2,
+      isActive: true,
+    },
+  });
+  await prisma.cityButton.create({
+    data: {
+      name: "İstanbul",
+      slug: "istanbul",
+      cityId: istanbul.id,
+      icon: "fa-solid fa-location-dot",
+      sortOrder: 3,
+      isActive: true,
     },
   });
 
-  const floorNumbers = Array.from({ length: 25 }, (_, index) =>
-    String(index + 1),
-  );
-  const housingRooms = [
-    "1+0",
-    "1+1",
-    "2+0",
-    "2+1",
-    "3+1",
-    "4+1",
-    "5+1",
-    "5+2",
-    "6+1",
-    "6+2",
-    "6+3",
-    "7+1",
-    "7+2",
-    "7+3",
-    "7+4",
-    "8+1",
-    "8+2",
-    "8+3",
-    "8+4",
-    "Diğer",
-  ];
-
-  const infrastructureOptions = [
-    "Elektrik",
-    "Su",
-    "Sanayi Elektriği",
-    "Doğalgaz",
-    "İnternet",
-    "Telekom",
-    "Fiber",
-    "Kanalizasyon",
-    "Yol",
-  ];
-
-  const locationOptions = [
-    "Çarşı",
-    "İlkokul",
-    "Lise",
-    "Üniversite",
-    "Hastane",
-    "Sağlık Ocağı",
-    "Pazar",
-    "AVM",
-    "Market",
-    "Eczane",
-    "Belediye",
-    "Dolmuş Hattı",
-    "Otobüs Durağı",
-    "Ana Cadde",
-    "Ara Sokak",
-  ];
-
-  const housingAttributes = [
-    {
-      category: ListingCategory.HOUSING,
-      key: "housingType",
-      label: "Konut Tipi",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Apart",
-        "Daire",
-        "Dublex",
-        "Triplex",
-        "Villa",
-        "Müstakil Ev",
-        "Devremülk",
-        "Diğer",
-      ],
+  // ========== ACTION BUTTONS (Aksiyon Butonları) ==========
+  console.log("Creating action buttons...");
+  await prisma.actionButton.create({
+    data: {
+      name: "SATMAK İSTİYORUM",
+      linkUrl: "/satilik-kiralik-talep?type=SELL",
+      bgColor: "#f97316",
+      textColor: "#ffffff",
+      icon: "fa-solid fa-house",
+      sortOrder: 0,
+      isActive: true,
+    },
+  });
+  await prisma.actionButton.create({
+    data: {
+      name: "EVİM NE KADAR EDER?",
+      linkUrl: "/evim-ne-kadar-eder",
+      bgColor: "#0a4ea3",
+      textColor: "#ffffff",
+      icon: "fa-solid fa-calculator",
       sortOrder: 1,
+      isActive: true,
     },
-    {
-      category: ListingCategory.HOUSING,
-      key: "rooms",
-      label: "Oda Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: housingRooms,
+  });
+  await prisma.actionButton.create({
+    data: {
+      name: "DEĞER ARTIŞ VERGİSİ",
+      linkUrl: "https://ivd.gib.gov.tr/",
+      bgColor: "#2f9e44",
+      textColor: "#ffffff",
+      icon: "fa-solid fa-receipt",
       sortOrder: 2,
+      isActive: true,
     },
-    {
-      category: ListingCategory.HOUSING,
-      key: "floorLocation",
-      label: "Bulunduğu Kat",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Zemin Kat",
-        "Yüksek Giriş",
-        "Dükkan Üstü",
-        ...floorNumbers,
-        "Bodrum Kat",
-      ],
-      sortOrder: 3,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "floorCount",
-      label: "Kat Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: floorNumbers,
-      sortOrder: 4,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "unitsPerFloor",
-      label: "Kattaki Daire Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: ["Müstakil", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16"],
-      sortOrder: 5,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "floorType",
-      label: "Kat Tipi",
-      type: ListingAttributeType.SELECT,
-      options: ["Ara Kat", "Çatı Katı", "Bahçe Katı", "Teras Kat", "Diğer"],
-      sortOrder: 6,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "facade",
-      label: "Cephe",
-      type: ListingAttributeType.SELECT,
-      options: ["Kuzey", "Güney", "Doğu", "Batı"],
-      allowsMultiple: true,
-      sortOrder: 7,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "buildingAge",
-      label: "Bina Yaşı",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Sıfır",
-        "İnşaat Hali",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6-10 arası",
-        "11-15 arası",
-        "16-20 arası",
-        "21-25 arası",
-        "26-30 arası",
-        "30 üstü",
-      ],
-      sortOrder: 8,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "bathroomCount",
-      label: "Banyo Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: ["1", "2", "3", "4", "5"],
-      sortOrder: 9,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "masterBathroom",
-      label: "Ebeveyn Banyosu",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 10,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "toiletCount",
-      label: "Tuvalet Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: ["1", "2", "3", "4", "5"],
-      sortOrder: 11,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "toiletType",
-      label: "Tuvalet Tipi",
-      type: ListingAttributeType.SELECT,
-      options: ["Alaturka", "Alafranga"],
-      allowsMultiple: true,
-      sortOrder: 12,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "heatingType",
-      label: "Isıtma Tipi",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Bireysel Kombi",
-        "Merkezi (Pay ölçer)",
-        "Yerden Isıtma",
-        "Sobalı",
-        "Elektrik",
-        "Klima",
-      ],
-      allowsMultiple: true,
-      sortOrder: 13,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "insulation",
-      label: "Isı Yalıtım",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "İçten", "Dıştan", "İçten ve Dıştan"],
-      sortOrder: 14,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "balconyCount",
-      label: "Balkon Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: ["Yok", "1", "2", "3", "4", "5", "6"],
-      sortOrder: 15,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "glassBalcony",
-      label: "Cam Balkon",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "1", "2", "3", "4", "5", "6"],
-      sortOrder: 16,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "fryKitchen",
-      label: "Kızartma Mutfağı",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 17,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "dressingRoom",
-      label: "Giyinme Odası",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 18,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "laundryRoom",
-      label: "Çamaşır Odası",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 19,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "elevator",
-      label: "Asansör",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Çift Asansör", "Yapım Aşamasında"],
-      sortOrder: 20,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "interiorDoors",
-      label: "İç Kapılar",
-      type: ListingAttributeType.SELECT,
-      options: ["Panel", "Lake", "Ahşap", "PVC", "Metal", "Diğer"],
-      sortOrder: 21,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "windows",
-      label: "Pencereler",
-      type: ListingAttributeType.SELECT,
-      options: ["PVC", "Ahşap", "Metal", "Diğer"],
-      sortOrder: 22,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "suspendedCeiling",
-      label: "Asma Tavan",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 23,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "showerCabin",
-      label: "Duşakabin",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 24,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "wardrobe",
-      label: "Vestiyer",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 25,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "roofCover",
-      label: "Çatı Kaplama",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 26,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "flooring",
-      label: "Zeminler",
-      type: ListingAttributeType.SELECT,
-      options: ["Laminant", "Granit", "Ahşap Parke", "Fayans", "Beton", "Diğer"],
-      sortOrder: 27,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "kitchenCabinet",
-      label: "Mutfak Dolabı",
-      type: ListingAttributeType.SELECT,
-      options: ["Sıfır", "Yeni", "İyi", "Orta", "Kötü", "Yok"],
-      sortOrder: 28,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "steelDoor",
-      label: "Çelik Kapı",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 29,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "pantry",
-      label: "Kiler",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Dairede", "Bodrumda", "Çatıda", "Balkonda", "Bahçede"],
-      allowsMultiple: true,
-      sortOrder: 30,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "garage",
-      label: "Garaj",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Bireysel Garaj", "Ortak Kullanım"],
-      sortOrder: 31,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "garden",
-      label: "Bahçe",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Bireysel", "Ortak Kullanım", "Kış Bahçeli"],
-      allowsMultiple: true,
-      sortOrder: 32,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "parking",
-      label: "Otopark",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Açık", "Kapalı", "Açık ve Kapalı"],
-      sortOrder: 33,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "shutter",
-      label: "Panjur",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Otomatik Panjur", "Manuel Panjur"],
-      allowsMultiple: true,
-      sortOrder: 34,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "builtIn",
-      label: "Ankastre",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 35,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "inSite",
-      label: "Site İçinde mi",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır"],
-      sortOrder: 36,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "playground",
-      label: "Oyun Parkı",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 37,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "gazebo",
-      label: "Kamelya",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 38,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "security",
-      label: "Güvenlik",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Kamera Sistemi", "Güvenlik"],
-      allowsMultiple: true,
-      sortOrder: 39,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "activities",
-      label: "Aktivite",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Spa",
-        "Sauna",
-        "Hamam",
-        "Açık Havuz",
-        "Kapalı Havuz",
-        "Spor Salonu",
-        "Tenis Kortu",
-        "Basketbol Sahası",
-        "Futbol Sahası",
-        "Toplantı Salonu",
-        "Kreş",
-      ],
-      allowsMultiple: true,
-      sortOrder: 40,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "neighborhood",
-      label: "Muhit",
-      type: ListingAttributeType.SELECT,
-      options: locationOptions,
-      allowsMultiple: true,
-      sortOrder: 41,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "dues",
-      label: "Aidat",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 42,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "titleDeedStatus",
-      label: "Tapu Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Kat Mülkiyeti", "Kat İrtifakı", "Arsa Tapulu"],
-      sortOrder: 43,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "occupancyPermit",
-      label: "İskan/Oturum",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Alınacak"],
-      sortOrder: 44,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "usageStatus",
-      label: "Kullanım Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Mülk Sahibi", "Boş", "Kiracılı", "Yapım Aşamasında"],
-      sortOrder: 45,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "rentPrice",
-      label: "Kira Bedeli",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 46,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "exchange",
-      label: "Takas",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Var",
-        "Yok",
-        "Değerlendirilir",
-        "Araç ile takas",
-        "Daire ile Takas",
-        "Gayrimenkul ile takas",
-      ],
-      sortOrder: 47,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "loanEligibility",
-      label: "Krediye Uygun mu",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Kısmen"],
-      sortOrder: 48,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "furnished",
-      label: "Eşyalı mı",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır"],
-      sortOrder: 49,
-    },
-    {
-      category: ListingCategory.HOUSING,
-      key: "shareStatus",
-      label: "Hisse Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Hisseli", "Müstakil"],
-      sortOrder: 50,
-    },
-  ];
+  });
 
-  const landAttributes = [
-    {
-      category: ListingCategory.LAND,
-      key: "landType",
-      label: "Arsa Tipi",
-      type: ListingAttributeType.SELECT,
-      options: ["Konut", "Ticari", "Konut + Ticari", "Otel", "Sanayi", "AVM", "Diğer"],
-      sortOrder: 1,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "zoningStatus",
-      label: "İmar Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["İmarlı", "İmarsız", "18. Madde kapsamında", "Diğer"],
-      sortOrder: 2,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "blockParcel",
-      label: "Ada/Parsel",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 3,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "areaSize",
-      label: "Metresi",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 4,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "taks",
-      label: "T.A.K.S.",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 5,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "kaks",
-      label: "K.A.K.S.",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 6,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "floorLimit",
-      label: "Kat Adedi",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 7,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "height",
-      label: "Yükseklik",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 8,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "roadDeduction",
-      label: "Yola Terk (m²)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 9,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "buildingOrder",
-      label: "Nizam",
-      type: ListingAttributeType.SELECT,
-      options: ["Ayrık", "Bitişik", "Blok", "İkiz", "Birlikte Yapılaşma", "Diğer"],
-      sortOrder: 10,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "roadFrontage",
-      label: "Yola Cephesi (m²)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 11,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "infrastructure",
-      label: "Alt Yapı",
-      type: ListingAttributeType.SELECT,
-      options: infrastructureOptions,
-      allowsMultiple: true,
-      sortOrder: 12,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "exchange",
-      label: "Takas",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Değerlendirilir"],
-      sortOrder: 13,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "loanEligibility",
-      label: "Krediye Uygun mu",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Bilinmiyor"],
-      sortOrder: 14,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "shareStatus",
-      label: "Hisse Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Hisseli", "Müstakil"],
-      sortOrder: 15,
-    },
-    {
-      category: ListingCategory.LAND,
-      key: "landSwap",
-      label: "Kat Karşılığı",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Bilinmiyor"],
-      sortOrder: 16,
-    },
-  ];
+  // ========== LISTING ATTRIBUTES ==========
+  console.log("Seeding listing attributes...");
+  const attrResult = await seedListingAttributes(prisma);
+  console.log(`Listing attributes seeded: ${attrResult.attributeCount} attributes`);
 
-  const fieldAttributes = [
-    {
-      category: ListingCategory.FIELD,
-      key: "fieldType",
-      label: "Tarla Tipi",
-      type: ListingAttributeType.SELECT,
-      options: ["Sulu", "Kıraç", "Verimli", "Taşlık", "Marjinal"],
-      allowsMultiple: true,
-      sortOrder: 1,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "blockParcel",
-      label: "Ada/Parsel",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 2,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "areaSize",
-      label: "Metresi",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 3,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "waterStatus",
-      label: "Su Durumu",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Var",
-        "Yok",
-        "Şebeke",
-        "Kooperatif",
-        "Sondaj Kuyu",
-        "Kanaldan Sulama",
-        "Dereden",
-        "Diğer",
-      ],
-      allowsMultiple: true,
-      sortOrder: 4,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "electricityStatus",
-      label: "Elektrik Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Alınabilir"],
-      sortOrder: 5,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "roadStatus",
-      label: "Yol Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Patika Yol", "Kadastro Yolu"],
-      allowsMultiple: true,
-      sortOrder: 6,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "roadFrontage",
-      label: "Yola Cephe (m²)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 7,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "fence",
-      label: "Tel Örgü",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 8,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "house",
-      label: "Ev",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "1+1", "2+1", "3+1", "4+1", "Dublex", "Triplex"],
-      allowsMultiple: true,
-      sortOrder: 9,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "pool",
-      label: "Havuz",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Sulama Havuzu", "Yüzme Havuzu", "Bilinmiyor"],
-      allowsMultiple: true,
-      sortOrder: 10,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "storageGarage",
-      label: "Depo/Garaj",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 11,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "irrigationSystem",
-      label: "Sulama Tesisatı",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 12,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "equipment",
-      label: "Teçhizat / Aletler",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 13,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "slope",
-      label: "Eğim (Derece)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 14,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "exchange",
-      label: "Takas",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Değerlendirilir"],
-      sortOrder: 15,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "loanEligibility",
-      label: "Krediye Uygun mu",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Bilinmiyor"],
-      sortOrder: 16,
-    },
-    {
-      category: ListingCategory.FIELD,
-      key: "shareStatus",
-      label: "Hisse Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Hisseli", "Müstakil"],
-      sortOrder: 17,
-    },
-  ];
-
-  const gardenAttributes = [
-    {
-      category: ListingCategory.GARDEN,
-      key: "gardenType",
-      label: "Bahçe Tipi",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Elma Bahçesi",
-        "Ceviz Bahçesi",
-        "Zeytin Bahçesi",
-        "Badem Bahçesi",
-        "Erik Bahçesi",
-        "Kiraz Bahçesi",
-        "Üzüm Bağı",
-        "Meyve Bahçesi (Karışık)",
-        "Diğer",
-      ],
-      sortOrder: 1,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "blockParcel",
-      label: "Ada/Parsel",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 2,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "areaSize",
-      label: "Metresi",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 3,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "fruitType",
-      label: "Meyve Cinsi",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 4,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "treeCount",
-      label: "Ağaç Sayısı",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 5,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "treeAge",
-      label: "Ağaç Yaşı",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 6,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "waterStatus",
-      label: "Su Durumu",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Var",
-        "Yok",
-        "Şebeke",
-        "Kooperatif",
-        "Sondaj Kuyu",
-        "Kanaldan Sulama",
-        "Dereden",
-        "Diğer",
-      ],
-      allowsMultiple: true,
-      sortOrder: 7,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "electricityStatus",
-      label: "Elektrik Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Alınabilir"],
-      sortOrder: 8,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "roadStatus",
-      label: "Yol Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Patika Yol", "Kadastro Yolu"],
-      allowsMultiple: true,
-      sortOrder: 9,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "roadFrontage",
-      label: "Yola Cephe (m²)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 10,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "fence",
-      label: "Tel Örgü",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 11,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "house",
-      label: "Ev",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "1+1", "2+1", "3+1", "4+1", "Dublex", "Triplex"],
-      allowsMultiple: true,
-      sortOrder: 12,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "pool",
-      label: "Havuz",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Sulama Havuzu", "Yüzme Havuzu", "Bilinmiyor"],
-      allowsMultiple: true,
-      sortOrder: 13,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "storageGarage",
-      label: "Depo/Garaj",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 14,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "irrigationSystem",
-      label: "Sulama Tesisatı",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok"],
-      sortOrder: 15,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "equipment",
-      label: "Teçhizat / Aletler",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 16,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "slope",
-      label: "Eğim (Derece)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 17,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "exchange",
-      label: "Takas",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Değerlendirilir"],
-      sortOrder: 18,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "loanEligibility",
-      label: "Krediye Uygun mu",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Bilinmiyor"],
-      sortOrder: 19,
-    },
-    {
-      category: ListingCategory.GARDEN,
-      key: "shareStatus",
-      label: "Hisse Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Hisseli", "Müstakil"],
-      sortOrder: 20,
-    },
-  ];
-
-  const hobbyGardenAttributes = gardenAttributes.map((item) => ({
-    ...item,
-    category: ListingCategory.HOBBY_GARDEN,
-  }));
-
-  const commercialAttributes = [
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "commercialType",
-      label: "Gayrimenkul Tipi",
-      type: ListingAttributeType.SELECT,
-      options: ["Dükkan", "Ofis", "Depo", "Sanayi Dükkanı", "Otel", "Fabrika", "Diğer"],
-      sortOrder: 1,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "areaSize",
-      label: "Metresi (m²)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 2,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "floorLevels",
-      label: "Kat Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: ["Bodrum", "Zemin", "Asma Kat", "1", "2", "3", "4", "5", "6"],
-      allowsMultiple: true,
-      sortOrder: 3,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "frontLength",
-      label: "Ön Cephe Uzunluk",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 4,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "buildingAge",
-      label: "Bina Yaşı",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Sıfır",
-        "İnşaat Hali",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6-10 arası",
-        "11-15 arası",
-        "16-20 arası",
-        "21-25 arası",
-        "26-30 arası",
-        "30 üstü",
-      ],
-      sortOrder: 5,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "facade",
-      label: "Cephe",
-      type: ListingAttributeType.SELECT,
-      options: ["Kuzey", "Güney", "Doğu", "Batı"],
-      allowsMultiple: true,
-      sortOrder: 6,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "isRented",
-      label: "Kiracılı mı",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır"],
-      sortOrder: 7,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "rentPrice",
-      label: "Kira Bedeli",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 8,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "infrastructure",
-      label: "Alt Yapı",
-      type: ListingAttributeType.SELECT,
-      options: infrastructureOptions,
-      allowsMultiple: true,
-      sortOrder: 9,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "location",
-      label: "Mevki",
-      type: ListingAttributeType.SELECT,
-      options: locationOptions,
-      allowsMultiple: true,
-      sortOrder: 10,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "exchange",
-      label: "Takas",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Değerlendirilir"],
-      sortOrder: 11,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "loanEligibility",
-      label: "Krediye Uygun mu",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Bilinmiyor"],
-      sortOrder: 12,
-    },
-    {
-      category: ListingCategory.COMMERCIAL,
-      key: "shareStatus",
-      label: "Hisse Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Hisseli", "Müstakil"],
-      sortOrder: 13,
-    },
-  ];
-
-  const transferAttributes = [
-    {
-      category: ListingCategory.TRANSFER,
-      key: "transferType",
-      label: "Gayrimenkul Tipi",
-      type: ListingAttributeType.SELECT,
-      options: ["Dükkan", "Ofis", "Depo", "Sanayi Dükkanı", "Otel", "Fabrika", "Diğer"],
-      sortOrder: 1,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "areaSize",
-      label: "Metresi (m²)",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 2,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "floorLevels",
-      label: "Kat Sayısı",
-      type: ListingAttributeType.SELECT,
-      options: ["Bodrum", "Zemin", "Asma Kat", "1", "2", "3", "4", "5", "6"],
-      allowsMultiple: true,
-      sortOrder: 3,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "frontLength",
-      label: "Ön Cephe Uzunluk",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 4,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "buildingAge",
-      label: "Bina Yaşı",
-      type: ListingAttributeType.SELECT,
-      options: [
-        "Sıfır",
-        "İnşaat Hali",
-        "1",
-        "2",
-        "3",
-        "4",
-        "5",
-        "6-10 arası",
-        "11-15 arası",
-        "16-20 arası",
-        "21-25 arası",
-        "26-30 arası",
-        "30 üstü",
-      ],
-      sortOrder: 5,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "facade",
-      label: "Cephe",
-      type: ListingAttributeType.SELECT,
-      options: ["Kuzey", "Güney", "Doğu", "Batı"],
-      allowsMultiple: true,
-      sortOrder: 6,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "rentPrice",
-      label: "Kira Bedeli",
-      type: ListingAttributeType.TEXT,
-      sortOrder: 7,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "infrastructure",
-      label: "Alt Yapı",
-      type: ListingAttributeType.SELECT,
-      options: infrastructureOptions,
-      allowsMultiple: true,
-      sortOrder: 8,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "location",
-      label: "Mevki",
-      type: ListingAttributeType.SELECT,
-      options: locationOptions,
-      allowsMultiple: true,
-      sortOrder: 9,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "exchange",
-      label: "Takas",
-      type: ListingAttributeType.SELECT,
-      options: ["Var", "Yok", "Değerlendirilir"],
-      sortOrder: 10,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "loanEligibility",
-      label: "Krediye Uygun mu",
-      type: ListingAttributeType.SELECT,
-      options: ["Evet", "Hayır", "Bilinmiyor"],
-      sortOrder: 11,
-    },
-    {
-      category: ListingCategory.TRANSFER,
-      key: "shareStatus",
-      label: "Hisse Durumu",
-      type: ListingAttributeType.SELECT,
-      options: ["Hisseli", "Müstakil"],
-      sortOrder: 12,
-    },
-  ];
-
-  const allAttributes = [
-    ...housingAttributes,
-    ...landAttributes,
-    ...fieldAttributes,
-    ...gardenAttributes,
-    ...hobbyGardenAttributes,
-    ...commercialAttributes,
-    ...transferAttributes,
-  ];
-
-  for (const def of allAttributes) {
-    await prisma.listingAttributeDefinition.upsert({
-      where: {
-        category_key: {
-          category: def.category,
-          key: def.key,
-        },
-      },
-      update: {
-        label: def.label,
-        type: def.type,
-        options: def.options ?? undefined,
-        allowsMultiple: def.allowsMultiple ?? false,
-        isRequired: def.isRequired ?? false,
-        sortOrder: def.sortOrder ?? 0,
-      },
-      create: {
-        ...def,
-        options: def.options ?? undefined,
-        allowsMultiple: def.allowsMultiple ?? false,
-      },
-    });
-  }
-
+  // ========== SAMPLE LISTINGS ==========
+  console.log("Creating sample listings...");
   const listingOne = await prisma.listing.create({
     data: {
+      listingNo: "00001",
       title: "Site İçinde 3+1 Daire",
       description:
-        "Geniş kullanım alanı, kapalı otopark ve çocuk oyun alanı bulunan site içinde.",
+        "Geniş kullanım alanı, kapalı otopark ve çocuk oyun alanı bulunan site içinde. 145 m² brüt alan, 3+1 oda düzeni.",
       status: ListingStatus.FOR_SALE,
       category: ListingCategory.HOUSING,
-      propertyType: "Daire",
+      subPropertyType: "DAIRE",
       price: new Prisma.Decimal("3250000"),
       currency: "TRY",
       areaGross: new Prisma.Decimal("145"),
@@ -1406,26 +270,25 @@ async function main() {
       branchId: konyaBranch.id,
       cityId: konya.id,
       districtId: selcuklu.id,
-      neighborhoodId: bosna.id,
-      consultantId: consultant.id,
       createdByUserId: adminUser.id,
       attributes: {
-        rooms: "3+1",
-        bathrooms: 2,
-        floor: "5",
-        heating: "Doğalgaz",
+        roomCount: "3+1",
+        buildingAge: "5",
+        floorLocation: "3",
+        totalFloors: "8",
+        heatingType: ["Bireysel Kombi"],
       },
-      publishedAt: new Date(),
     },
   });
 
   const listingTwo = await prisma.listing.create({
     data: {
+      listingNo: "00002",
       title: "Merkezde Satılık Dükkan",
-      description: "Karaman merkezde cadde üzeri, yüksek yaya trafiği.",
+      description: "Karaman merkezde cadde üzeri, yüksek yaya trafiği olan bölgede satılık dükkan.",
       status: ListingStatus.FOR_SALE,
       category: ListingCategory.COMMERCIAL,
-      propertyType: "Dükkan",
+      subPropertyType: "DUKKAN",
       price: new Prisma.Decimal("4750000"),
       currency: "TRY",
       areaGross: new Prisma.Decimal("90"),
@@ -1433,17 +296,17 @@ async function main() {
       isOpportunity: false,
       branchId: karamanBranch.id,
       cityId: karaman.id,
-      districtId: larende.id,
-      neighborhoodId: merkez.id,
+      districtId: karamanMerkez.id,
       createdByUserId: adminUser.id,
       attributes: {
-        frontage: "Cadde üzeri",
-        ceilingHeight: "3.5 m",
+        commercialArea: "90",
+        buildingAge: "Sıfır",
       },
-      publishedAt: new Date(),
     },
   });
 
+  // ========== LISTING IMAGES ==========
+  console.log("Adding sample listing images...");
   await prisma.listingImage.createMany({
     data: [
       {
@@ -1466,11 +329,20 @@ async function main() {
       },
     ],
   });
+
+  // ========== LISTING COUNTER ==========
+  console.log("Setting up listing counter...");
+  await prisma.listingCounter.upsert({
+    where: { id: "default" },
+    update: { lastNumber: 2 },
+    create: { id: "default", lastNumber: 2 },
+  });
+
+  console.log("Seed completed successfully!");
 }
 
 main()
   .catch((error) => {
-    // eslint-disable-next-line no-console
     console.error("Seed failed:", error);
     process.exit(1);
   })

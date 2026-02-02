@@ -1,205 +1,126 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useState } from "react";
 import { API_BASE_URL, fetchJson } from "../../../lib/api";
 import { formatPrice, getStatusClass, getStatusLabel } from "../../../lib/listings";
 
-type City = {
+type Listing = {
   id: string;
-  name: string;
-  slug: string;
-};
-
-type District = {
-  id: string;
-  name: string;
-  cityId: string;
-};
-
-type Neighborhood = {
-  id: string;
-  name: string;
-  districtId: string;
+  listingNo?: string | null;
+  title: string;
+  status?: string | null;
+  category?: string | null;
+  subPropertyType?: string | null;
+  price?: string | null;
+  city?: { name: string } | null;
+  district?: { name: string } | null;
+  neighborhood?: { name: string } | null;
+  branch?: { id: string; name: string } | null;
+  consultant?: { id: string; user?: { name: string } } | null;
+  createdBy?: { id: string; name: string; role: string } | null;
+  areaGross?: string | null;
+  areaNet?: string | null;
+  attributes?: Record<string, string | string[] | boolean | number> | null;
+  images?: { url: string; isCover?: boolean | null }[] | null;
+  createdAt?: string | null;
 };
 
 type Branch = {
   id: string;
   name: string;
-  cityId: string;
-  city?: { name: string } | null;
 };
 
-type Listing = {
+type Consultant = {
   id: string;
-  title: string;
-  status?: string | null;
-  price?: string | null;
-  city?: { name: string } | null;
-  district?: { name: string } | null;
-  neighborhood?: { name: string } | null;
-  branch?: { name: string } | null;
-  category?: string | null;
-  propertyType?: string | null;
-  areaGross?: string | null;
-  areaNet?: string | null;
-  attributes?: Record<string, unknown> | null;
-  images?: { url: string; isCover?: boolean | null }[] | null;
-  createdAt?: string | null;
+  user?: { name: string };
+  branch?: { id: string; name: string };
 };
 
-type ListingImage = {
+type AuthUser = {
   id: string;
-  url: string;
-  isCover?: boolean | null;
-  sortOrder?: number | null;
+  name: string;
+  role: string;
 };
 
-type ListingAttributeDefinition = {
-  id: string;
-  category: string;
-  key: string;
-  label: string;
-  type: "TEXT" | "NUMBER" | "SELECT" | "BOOLEAN";
-  options?: string[] | null;
-  allowsMultiple?: boolean | null;
-  isRequired?: boolean | null;
-  sortOrder?: number | null;
+const categoryLabels: Record<string, string> = {
+  HOUSING: "Konut",
+  LAND: "Arsa",
+  COMMERCIAL: "Ticari",
+  TRANSFER: "Devren",
+  FIELD: "Tarla",
+  GARDEN: "Bahçe",
+  HOBBY_GARDEN: "Hobi Bahçesi",
 };
 
-type ListingDetail = Listing & {
-  description: string;
-  category?: string | null;
-  propertyType?: string | null;
-  isOpportunity?: boolean | null;
-  areaGross?: string | null;
-  areaNet?: string | null;
-  cityId?: string | null;
-  districtId?: string | null;
-  neighborhoodId?: string | null;
-  branchId?: string | null;
-  attributes?: Record<string, unknown> | null;
-  images?: ListingImage[] | null;
-  // SEO Fields
-  slug?: string | null;
-  seoUrl?: string | null;
-  metaTitle?: string | null;
-  metaDescription?: string | null;
-  metaKeywords?: string | null;
-  canonicalUrl?: string | null;
-};
-
-const statusOptions = [
-  { value: "FOR_SALE", label: "Satılık" },
-  { value: "FOR_RENT", label: "Kiralık" },
-];
-
-const categoryOptions = [
-  { value: "HOUSING", label: "Konut" },
-  { value: "LAND", label: "Arsa" },
-  { value: "COMMERCIAL", label: "Ticari" },
-  { value: "TRANSFER", label: "Devren" },
-  { value: "FIELD", label: "Tarla" },
-  { value: "GARDEN", label: "Bahçe" },
-  { value: "HOBBY_GARDEN", label: "Hobi Bahçesi" },
-];
+// Rol kontrolleri
+const MANAGER_ROLES = ["ADMIN", "MANAGER", "BROKER", "FIRM_OWNER", "REAL_ESTATE_EXPERT"];
+const isManagerRole = (role: string) => MANAGER_ROLES.includes(role);
 
 export default function AdminListingsPage() {
   const [isReady, setIsReady] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
-  const [cities, setCities] = useState<City[]>([]);
-  const [districts, setDistricts] = useState<District[]>([]);
-  const [neighborhoods, setNeighborhoods] = useState<Neighborhood[]>([]);
-  const [editDistricts, setEditDistricts] = useState<District[]>([]);
-  const [editNeighborhoods, setEditNeighborhoods] = useState<Neighborhood[]>([]);
-  const [attributeDefinitions, setAttributeDefinitions] = useState<
-    ListingAttributeDefinition[]
-  >([]);
-  const [editAttributeDefinitions, setEditAttributeDefinitions] = useState<
-    ListingAttributeDefinition[]
-  >([]);
-  const [branches, setBranches] = useState<Branch[]>([]);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [listings, setListings] = useState<Listing[]>([]);
+  const [myListings, setMyListings] = useState<Listing[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [consultants, setConsultants] = useState<Consultant[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [formError, setFormError] = useState("");
-  const [submitState, setSubmitState] = useState<"idle" | "saving">("idle");
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editImages, setEditImages] = useState<ListingImage[]>([]);
-  const [editState, setEditState] = useState({
-    title: "",
-    description: "",
-    status: "FOR_SALE",
-    category: "HOUSING",
-    price: "",
-    propertyType: "",
-    areaGross: "",
-    areaNet: "",
-    isOpportunity: false,
-    cityId: "",
-    districtId: "",
-    neighborhoodId: "",
-    branchId: "",
-    attributes: {} as Record<string, string | boolean | string[]>,
-    // SEO Fields
-    slug: "",
-    seoUrl: "",
-    metaTitle: "",
-    metaDescription: "",
-    metaKeywords: "",
-    canonicalUrl: "",
-  });
-  const [editError, setEditError] = useState("");
-  const [editStatus, setEditStatus] = useState<"idle" | "loading" | "saving">(
-    "idle",
-  );
-  const [imageUrl, setImageUrl] = useState("");
-  const [imageError, setImageError] = useState("");
-  const [imageStatus, setImageStatus] = useState<"idle" | "saving">("idle");
-  const [imageFiles, setImageFiles] = useState<File[]>([]);
-  const [setFirstAsCover, setSetFirstAsCover] = useState(false);
-  const [fileInputKey, setFileInputKey] = useState(0);
-  const [formState, setFormState] = useState({
-    title: "",
-    description: "",
-    status: "FOR_SALE",
-    category: "HOUSING",
-    price: "",
-    propertyType: "",
-    areaGross: "",
-    areaNet: "",
-    isOpportunity: false,
-    cityId: "",
-    districtId: "",
-    neighborhoodId: "",
-    branchId: "",
-    attributes: {} as Record<string, string | boolean | string[]>,
-  });
+  const [deleteError, setDeleteError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
+  
+  // Tab state (sadece yöneticiler için)
+  const [activeTab, setActiveTab] = useState<"my" | "all">("my");
+  
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [branchFilter, setBranchFilter] = useState("");
+  const [consultantFilter, setConsultantFilter] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
 
-  const availableBranches = useMemo(() => {
-    if (!formState.cityId) {
-      return branches;
-    }
-    return branches.filter((branch) => branch.cityId === formState.cityId);
-  }, [branches, formState.cityId]);
+  // Transfer modal
+  const [transferModal, setTransferModal] = useState<{ listingId: string; title: string } | null>(null);
+  const [transferConsultantId, setTransferConsultantId] = useState("");
 
-  const availableEditBranches = useMemo(() => {
-    if (!editState.cityId) {
-      return branches;
-    }
-    return branches.filter((branch) => branch.cityId === editState.cityId);
-  }, [branches, editState.cityId]);
+  const isManager = user?.role ? isManagerRole(user.role) : false;
 
   const loadData = async () => {
     setIsLoading(true);
+    const token = localStorage.getItem("auth_token");
+    
     try {
-      const [cityData, branchData, listingData] = await Promise.all([
-        fetchJson<City[]>("/cities", { cache: "no-store" }),
-        fetchJson<Branch[]>("/branches", { cache: "no-store" }),
-        fetchJson<Listing[]>("/listings", { cache: "no-store" }),
-      ]);
-      setCities(cityData);
+      // Şubeleri yükle
+      const branchData = await fetchJson<Branch[]>("/branches", { cache: "no-store" });
       setBranches(branchData);
-      setListings(listingData);
+
+      if (token && user) {
+        const headers = { Authorization: `Bearer ${token}` };
+
+        // Kendi ilanlarını yükle
+        const myRes = await fetch(`${API_BASE_URL}/listings/my-listings`, { headers });
+        if (myRes.ok) {
+          const myData = await myRes.json();
+          setMyListings(myData);
+        }
+
+        // Yöneticiler için tüm ilanları yükle
+        if (isManager) {
+          const allRes = await fetch(`${API_BASE_URL}/listings/all-listings`, { headers });
+          if (allRes.ok) {
+            const allData = await allRes.json();
+            setListings(allData);
+          }
+
+          // Danışmanları yükle
+          const consultantRes = await fetch(`${API_BASE_URL}/consultants`, { headers });
+          if (consultantRes.ok) {
+            const consultantData = await consultantRes.json();
+            setConsultants(consultantData);
+          }
+        }
+      }
     } finally {
       setIsLoading(false);
     }
@@ -207,1348 +128,485 @@ export default function AdminListingsPage() {
 
   useEffect(() => {
     const token = localStorage.getItem("auth_token");
+    const userStr = localStorage.getItem("auth_user");
+    
     setIsAuthed(Boolean(token));
+    if (userStr) {
+      try {
+        setUser(JSON.parse(userStr));
+      } catch {
+        // ignore
+      }
+    }
     setIsReady(true);
-    loadData();
   }, []);
 
-  const renderAttributeField = (
-    def: ListingAttributeDefinition,
-    value: string | boolean | string[] | undefined,
-    onChange: (next: string | boolean | string[]) => void,
-  ) => {
-    const normalizedValue =
-      value === undefined || value === null ? "" : String(value);
-
-    if (def.type === "BOOLEAN") {
-      return (
-        <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input
-            type="checkbox"
-            checked={Boolean(value)}
-            onChange={(event) => onChange(event.target.checked)}
-          />
-          {def.label}
-        </label>
-      );
-    }
-
-    if (def.type === "SELECT" && def.allowsMultiple) {
-      const selected = Array.isArray(value) ? value : [];
-      return (
-        <div style={{ display: "grid", gap: 6 }}>
-          <div style={{ fontWeight: 600 }}>{def.label}</div>
-          {(def.options ?? []).map((option) => (
-            <label key={option} style={{ display: "flex", gap: 8 }}>
-              <input
-                type="checkbox"
-                checked={selected.includes(option)}
-                onChange={(event) => {
-                  if (event.target.checked) {
-                    onChange([...selected, option]);
-                  } else {
-                    onChange(selected.filter((item) => item !== option));
-                  }
-                }}
-              />
-              {option}
-            </label>
-          ))}
-        </div>
-      );
-    }
-
-    if (def.type === "SELECT") {
-      return (
-        <select
-          className="search-input"
-          value={normalizedValue}
-          onChange={(event) => onChange(event.target.value)}
-        >
-          <option value="">{def.label}</option>
-          {(def.options ?? []).map((option) => (
-            <option key={option} value={option}>
-              {option}
-            </option>
-          ))}
-        </select>
-      );
-    }
-
-    return (
-      <input
-        className="search-input"
-        type={def.type === "NUMBER" ? "number" : "text"}
-        placeholder={def.label}
-        value={normalizedValue}
-        onChange={(event) => onChange(event.target.value)}
-      />
-    );
-  };
-
   useEffect(() => {
-    if (!formState.cityId) {
-      setDistricts([]);
-      setNeighborhoods([]);
-      return;
+    if (isReady && user) {
+      loadData();
     }
-    fetchJson<District[]>(`/districts?cityId=${formState.cityId}`, {
-      cache: "no-store",
-    })
-      .then((data) => setDistricts(data))
-      .catch(() => setDistricts([]));
-  }, [formState.cityId]);
+  }, [isReady, user]);
 
-  useEffect(() => {
-    if (!formState.districtId) {
-      setNeighborhoods([]);
-      return;
-    }
-    fetchJson<Neighborhood[]>(`/neighborhoods?districtId=${formState.districtId}`, {
-      cache: "no-store",
-    })
-      .then((data) => setNeighborhoods(data))
-      .catch(() => setNeighborhoods([]));
-  }, [formState.districtId]);
-
-  useEffect(() => {
-    if (!formState.category) {
-      setAttributeDefinitions([]);
-      setFormState((prev) => ({ ...prev, attributes: {} }));
-      return;
-    }
-    fetchJson<ListingAttributeDefinition[]>(
-      `/listing-attributes?category=${formState.category}`,
-      { cache: "no-store" },
-    )
-      .then((data) => setAttributeDefinitions(data))
-      .catch(() => setAttributeDefinitions([]));
-  }, [formState.category]);
-
-  useEffect(() => {
-    if (!editState.cityId) {
-      setEditDistricts([]);
-      setEditNeighborhoods([]);
-      return;
-    }
-    fetchJson<District[]>(`/districts?cityId=${editState.cityId}`, {
-      cache: "no-store",
-    })
-      .then((data) => setEditDistricts(data))
-      .catch(() => setEditDistricts([]));
-  }, [editState.cityId]);
-
-  useEffect(() => {
-    if (!editState.districtId) {
-      setEditNeighborhoods([]);
-      return;
-    }
-    fetchJson<Neighborhood[]>(
-      `/neighborhoods?districtId=${editState.districtId}`,
-      { cache: "no-store" },
-    )
-      .then((data) => setEditNeighborhoods(data))
-      .catch(() => setEditNeighborhoods([]));
-  }, [editState.districtId]);
-
-  useEffect(() => {
-    if (!editState.category) {
-      setEditAttributeDefinitions([]);
-      setEditState((prev) => ({ ...prev, attributes: {} }));
-      return;
-    }
-    fetchJson<ListingAttributeDefinition[]>(
-      `/listing-attributes?category=${editState.category}`,
-      { cache: "no-store" },
-    )
-      .then((data) => setEditAttributeDefinitions(data))
-      .catch(() => setEditAttributeDefinitions([]));
-  }, [editState.category]);
-
-  const handleChange = (field: string, value: string | boolean) => {
-    setFormState((prev) => ({
-      ...prev,
-      [field]: value,
-      ...(field === "cityId"
-        ? { districtId: "", neighborhoodId: "" }
-        : field === "districtId"
-          ? { neighborhoodId: "" }
-          : {}),
-    }));
-  };
-
-  const handleEditChange = (field: string, value: string | boolean) => {
-    setEditState((prev) => ({
-      ...prev,
-      [field]: value,
-      ...(field === "cityId"
-        ? { districtId: "", neighborhoodId: "" }
-        : field === "districtId"
-          ? { neighborhoodId: "" }
-          : {}),
-    }));
-  };
-
-  const handleAttributeChange = (
-    key: string,
-    value: string | boolean | string[],
-  ) => {
-    setFormState((prev) => ({
-      ...prev,
-      attributes: {
-        ...(prev.attributes ?? {}),
-        [key]: value,
-      },
-    }));
-  };
-
-  const handleEditAttributeChange = (
-    key: string,
-    value: string | boolean | string[],
-  ) => {
-    setEditState((prev) => ({
-      ...prev,
-      attributes: {
-        ...(prev.attributes ?? {}),
-        [key]: value,
-      },
-    }));
-  };
-
-  const loadListingForEdit = async (id: string) => {
-    setEditError("");
-    setImageError("");
-    setEditStatus("loading");
-    try {
-      const listing = await fetchJson<ListingDetail>(`/listings/${id}`, {
-        cache: "no-store",
-      });
-      setEditId(id);
-      setEditImages(listing.images ?? []);
-      setSetFirstAsCover(false);
-      setImageFiles([]);
-      setFileInputKey((prev) => prev + 1);
-      setEditState({
-        title: listing.title ?? "",
-        description: listing.description ?? "",
-        status: listing.status ?? "FOR_SALE",
-        category: listing.category ?? "HOUSING",
-        price: listing.price ? String(listing.price) : "",
-        propertyType: listing.propertyType ?? "",
-        areaGross: listing.areaGross ? String(listing.areaGross) : "",
-        areaNet: listing.areaNet ? String(listing.areaNet) : "",
-        isOpportunity: Boolean(listing.isOpportunity),
-        cityId: listing.cityId ?? "",
-        districtId: listing.districtId ?? "",
-        neighborhoodId: listing.neighborhoodId ?? "",
-        branchId: listing.branchId ?? "",
-        attributes: (listing.attributes ?? {}) as Record<string, string | boolean>,
-        // SEO Fields
-        slug: listing.slug ?? "",
-        seoUrl: listing.seoUrl ?? "",
-        metaTitle: listing.metaTitle ?? "",
-        metaDescription: listing.metaDescription ?? "",
-        metaKeywords: listing.metaKeywords ?? "",
-        canonicalUrl: listing.canonicalUrl ?? "",
-      });
-    } catch (error) {
-      setEditError("İlan bilgileri alınamadı.");
-    } finally {
-      setEditStatus("idle");
-    }
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setFormError("");
-
+  const handleDelete = async (id: string) => {
     const token = localStorage.getItem("auth_token");
     if (!token) {
-      setFormError("Bu işlem için giriş yapmanız gerekiyor.");
+      setDeleteError("Bu işlem için giriş yapmanız gerekiyor.");
       return;
     }
 
-    if (!formState.cityId || !formState.branchId) {
-      setFormError("Şehir ve şube seçimi zorunludur.");
-      return;
-    }
+    const shouldDelete = window.confirm("Bu ilanı silmek istediğinize emin misiniz?");
+    if (!shouldDelete) return;
 
-    setSubmitState("saving");
     try {
-      const payload = {
-        title: formState.title,
-        description: formState.description,
-        status: formState.status,
-        category: formState.category,
-        propertyType: formState.propertyType || undefined,
-        price: formState.price ? Number(formState.price) : undefined,
-        areaGross: formState.areaGross ? Number(formState.areaGross) : undefined,
-        areaNet: formState.areaNet ? Number(formState.areaNet) : undefined,
-        currency: "TRY",
-        isOpportunity: formState.isOpportunity,
-        cityId: formState.cityId,
-        districtId: formState.districtId || undefined,
-        neighborhoodId: formState.neighborhoodId || undefined,
-        branchId: formState.branchId,
-        attributes: formState.attributes ?? {},
-      };
-
-      const response = await fetch(`${API_BASE_URL}/listings`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
+      const response = await fetch(`${API_BASE_URL}/listings/${id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (!response.ok) {
-        throw new Error("Listeleme kaydedilemedi.");
-      }
-
-      setFormState({
-        title: "",
-        description: "",
-        status: "FOR_SALE",
-        category: "HOUSING",
-        price: "",
-        propertyType: "",
-        areaGross: "",
-        areaNet: "",
-        isOpportunity: false,
-        cityId: "",
-        districtId: "",
-        neighborhoodId: "",
-        branchId: "",
-        attributes: {},
-      });
+      if (!response.ok) throw new Error("İlan silinemedi.");
+      setSuccessMsg("İlan silindi");
       await loadData();
-    } catch (error) {
-      setFormError("İlan kaydı başarısız. Bilgileri kontrol edin.");
-    } finally {
-      setSubmitState("idle");
+    } catch {
+      setDeleteError("İlan silme başarısız.");
     }
   };
 
-  const resetEditState = () => {
-    setEditId(null);
-    setEditError("");
-    setEditStatus("idle");
-    setEditImages([]);
-    setImageError("");
-    setImageStatus("idle");
-    setImageUrl("");
-    setImageFiles([]);
-    setSetFirstAsCover(false);
-    setFileInputKey((prev) => prev + 1);
-    setEditState({
-      title: "",
-      description: "",
-      status: "FOR_SALE",
-      category: "HOUSING",
-      price: "",
-      propertyType: "",
-      areaGross: "",
-      areaNet: "",
-      isOpportunity: false,
-      cityId: "",
-      districtId: "",
-      neighborhoodId: "",
-      branchId: "",
-      attributes: {},
-      slug: "",
-      seoUrl: "",
-      metaTitle: "",
-      metaDescription: "",
-      metaKeywords: "",
-      canonicalUrl: "",
-    });
-  };
-
-  const handleUpdate = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-    setEditError("");
-
+  const handleTransfer = async () => {
+    if (!transferModal || !transferConsultantId) return;
+    
     const token = localStorage.getItem("auth_token");
-    if (!token || !editId) {
-      setEditError("Bu işlem için giriş yapmanız gerekiyor.");
-      return;
-    }
+    if (!token) return;
 
-    if (!editState.cityId || !editState.branchId) {
-      setEditError("Şehir ve şube seçimi zorunludur.");
-      return;
-    }
-
-    setEditStatus("saving");
     try {
-      const payload = {
-        title: editState.title,
-        description: editState.description,
-        status: editState.status,
-        category: editState.category,
-        propertyType: editState.propertyType || undefined,
-        price: editState.price ? Number(editState.price) : undefined,
-        areaGross: editState.areaGross ? Number(editState.areaGross) : undefined,
-        areaNet: editState.areaNet ? Number(editState.areaNet) : undefined,
-        currency: "TRY",
-        isOpportunity: editState.isOpportunity,
-        cityId: editState.cityId,
-        districtId: editState.districtId || undefined,
-        neighborhoodId: editState.neighborhoodId || undefined,
-        branchId: editState.branchId,
-        attributes: editState.attributes ?? {},
-        // SEO Fields
-        slug: editState.slug || undefined,
-        seoUrl: editState.seoUrl || undefined,
-        metaTitle: editState.metaTitle || undefined,
-        metaDescription: editState.metaDescription || undefined,
-        metaKeywords: editState.metaKeywords || undefined,
-        canonicalUrl: editState.canonicalUrl || undefined,
-      };
-
-      const response = await fetch(`${API_BASE_URL}/listings/${editId}`, {
+      const response = await fetch(`${API_BASE_URL}/listings/${transferModal.listingId}/transfer`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify({ consultantId: transferConsultantId }),
       });
 
-      if (!response.ok) {
-        throw new Error("İlan güncellenemedi.");
-      }
-
-      resetEditState();
+      if (!response.ok) throw new Error("Transfer başarısız.");
+      
+      setSuccessMsg("İlan başarıyla transfer edildi");
+      setTransferModal(null);
+      setTransferConsultantId("");
       await loadData();
-    } catch (error) {
-      setEditError("İlan güncelleme başarısız.");
-    } finally {
-      setEditStatus("idle");
+    } catch {
+      setDeleteError("Transfer işlemi başarısız.");
     }
   };
 
-  const handleAddImage = async () => {
-    setImageError("");
+  // Aktif listeyi belirle
+  const currentListings = activeTab === "my" || !isManager ? myListings : listings;
 
-    const token = localStorage.getItem("auth_token");
-    if (!token || !editId) {
-      setImageError("Bu işlem için giriş yapmanız gerekiyor.");
-      return;
-    }
-
-    if (!imageUrl.trim()) {
-      setImageError("Görsel URL zorunludur.");
-      return;
-    }
-
-    setImageStatus("saving");
-    try {
-      const response = await fetch(`${API_BASE_URL}/listings/${editId}/images`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({ url: imageUrl }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Görsel eklenemedi.");
+  // Filter and sort listings
+  const filteredListings = currentListings
+    .filter((listing) => {
+      if (searchTerm) {
+        const search = searchTerm.toLowerCase();
+        const matchTitle = listing.title?.toLowerCase().includes(search);
+        const matchNo = listing.listingNo?.toLowerCase().includes(search);
+        if (!matchTitle && !matchNo) return false;
       }
-
-      setImageUrl("");
-      await loadListingForEdit(editId);
-    } catch (error) {
-      setImageError("Görsel ekleme başarısız.");
-    } finally {
-      setImageStatus("idle");
-    }
-  };
-
-  const handleSetCover = async (imageId: string) => {
-    setImageError("");
-
-    const token = localStorage.getItem("auth_token");
-    if (!token || !editId) {
-      setImageError("Bu işlem için giriş yapmanız gerekiyor.");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/listings/${editId}/images/${imageId}/cover`,
-        {
-          method: "PATCH",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Kapak görseli güncellenemedi.");
+      if (statusFilter && listing.status !== statusFilter) return false;
+      if (categoryFilter && listing.category !== categoryFilter) return false;
+      if (branchFilter && listing.branch?.id !== branchFilter) return false;
+      if (consultantFilter && listing.consultant?.id !== consultantFilter) return false;
+      return true;
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "oldest":
+          return new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime();
+        case "price-asc":
+          return Number(a.price || 0) - Number(b.price || 0);
+        case "price-desc":
+          return Number(b.price || 0) - Number(a.price || 0);
+        case "title":
+          return (a.title || "").localeCompare(b.title || "");
+        default: // newest
+          return new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime();
       }
+    });
 
-      await loadListingForEdit(editId);
-    } catch (error) {
-      setImageError("Kapak görseli güncellenemedi.");
-    }
-  };
-
-  const handleUploadFile = async () => {
-    setImageError("");
-
-    const token = localStorage.getItem("auth_token");
-    if (!token || !editId) {
-      setImageError("Bu işlem için giriş yapmanız gerekiyor.");
-      return;
-    }
-
-    if (imageFiles.length === 0) {
-      setImageError("En az bir dosya seçmelisiniz.");
-      return;
-    }
-
-    setImageStatus("saving");
-    try {
-      const formData = new FormData();
-      imageFiles.forEach((file) => {
-        formData.append("files", file);
-      });
-      formData.append("setFirstAsCover", String(setFirstAsCover));
-
-      const response = await fetch(`${API_BASE_URL}/listings/${editId}/images/upload-many`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!response.ok) {
-        throw new Error("Görsel yüklenemedi.");
-      }
-
-      setImageFiles([]);
-      setSetFirstAsCover(false);
-      setFileInputKey((prev) => prev + 1);
-      await loadListingForEdit(editId);
-    } catch (error) {
-      setImageError("Görsel yükleme başarısız.");
-    } finally {
-      setImageStatus("idle");
-    }
-  };
-
-  const handleRemoveImage = async (imageId: string) => {
-    setImageError("");
-
-    const token = localStorage.getItem("auth_token");
-    if (!token || !editId) {
-      setImageError("Bu işlem için giriş yapmanız gerekiyor.");
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/listings/${editId}/images/${imageId}`,
-        {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        },
-      );
-
-      if (!response.ok) {
-        throw new Error("Görsel silinemedi.");
-      }
-
-      await loadListingForEdit(editId);
-    } catch (error) {
-      setImageError("Görsel silme başarısız.");
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    const token = localStorage.getItem("auth_token");
-    if (!token) {
-      setFormError("Bu işlem için giriş yapmanız gerekiyor.");
-      return;
-    }
-
-    const shouldDelete = window.confirm("Bu ilanı silmek istediğinize emin misiniz?");
-    if (!shouldDelete) {
-      return;
-    }
-
-    try {
-      const response = await fetch(`${API_BASE_URL}/listings/${id}`, {
-        method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("İlan silinemedi.");
-      }
-
-      if (editId === id) {
-        resetEditState();
-      }
-      await loadData();
-    } catch (error) {
-      setFormError("İlan silme başarısız.");
-    }
-  };
+  // Şubeye göre danışmanları filtrele
+  const filteredConsultants = branchFilter
+    ? consultants.filter(c => c.branch?.id === branchFilter)
+    : consultants;
 
   return (
     <main className="section">
       <div className="container">
-        <div className="section-title">İlan Yönetimi</div>
-        <div style={{ display: "flex", gap: 12, marginBottom: 16 }}>
-          <Link className="btn btn-outline" href="/admin">
-            Yönetim Paneli
-          </Link>
-          <button className="btn btn-outline" onClick={loadData}>
-            Yenile
-          </button>
+        {/* Header */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
+          <div>
+            <h1 style={{ fontSize: 24, fontWeight: 700, margin: 0 }}>
+              {isManager ? "İlan Yönetimi" : "İlanlarım"}
+            </h1>
+            <p style={{ color: "var(--color-muted)", margin: "4px 0 0", fontSize: 14 }}>
+              {activeTab === "my" || !isManager
+                ? `${myListings.length} ilanınız var`
+                : `Toplam ${listings.length} ilan`}
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 12 }}>
+            <Link href="/admin" className="btn btn-outline">
+              <i className="fa-solid fa-arrow-left" style={{ marginRight: 8 }}></i>
+              Yönetim Paneli
+            </Link>
+            <Link href="/admin/listings/new" className="btn">
+              <i className="fa-solid fa-plus" style={{ marginRight: 8 }}></i>
+              Yeni İlan Ekle
+            </Link>
+          </div>
         </div>
 
         {!isReady ? (
-          <div className="card">
-            <div className="card-body">Kontrol ediliyor...</div>
-          </div>
+          <div className="card"><div className="card-body">Kontrol ediliyor...</div></div>
         ) : null}
+
         {isReady && !isAuthed ? (
           <div className="card" style={{ marginBottom: 16 }}>
             <div className="card-body">
               Bu sayfayı kullanmak için giriş yapın.{" "}
-              <Link href="/admin/login" className="btn btn-outline">
-                Giriş Yap
-              </Link>
+              <Link href="/admin/login" className="btn btn-outline">Giriş Yap</Link>
             </div>
           </div>
         ) : null}
 
-        <div className="layout-grid">
-          <aside className="sidebar">
-            <div style={{ fontWeight: 700, marginBottom: 12 }}>Yeni İlan</div>
-            <form style={{ display: "grid", gap: 10 }} onSubmit={handleSubmit}>
-              <fieldset
-                disabled={!isAuthed}
-                style={{ border: 0, padding: 0, margin: 0, display: "grid", gap: 10 }}
-              >
-                <input
-                  className="search-input"
-                  placeholder="Başlık"
-                  value={formState.title}
-                  onChange={(event) => handleChange("title", event.target.value)}
-                  minLength={3}
-                  required
-                />
-                <textarea
-                  className="search-input"
-                  placeholder="Açıklama"
-                  value={formState.description}
-                  onChange={(event) =>
-                    handleChange("description", event.target.value)
-                  }
-                  minLength={10}
-                  rows={4}
-                  required
-                />
-                <select
-                  className="search-input"
-                  value={formState.status}
-                  onChange={(event) => handleChange("status", event.target.value)}
-                >
-                  {statusOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="search-input"
-                  value={formState.category}
-                  onChange={(event) => handleChange("category", event.target.value)}
-                >
-                  {categoryOptions.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-                <input
-                  className="search-input"
-                  placeholder="Fiyat (TL)"
-                  type="number"
-                  value={formState.price}
-                  onChange={(event) => handleChange("price", event.target.value)}
-                />
-                <input
-                  className="search-input"
-                  placeholder="Brüt m²"
-                  type="number"
-                  value={formState.areaGross}
-                  onChange={(event) => handleChange("areaGross", event.target.value)}
-                />
-                <input
-                  className="search-input"
-                  placeholder="Net m²"
-                  type="number"
-                  value={formState.areaNet}
-                  onChange={(event) => handleChange("areaNet", event.target.value)}
-                />
-                <input
-                  className="search-input"
-                  placeholder="Emlak Tipi (Daire, Dükkan...)"
-                  value={formState.propertyType}
-                  onChange={(event) =>
-                    handleChange("propertyType", event.target.value)
-                  }
-                />
-                {attributeDefinitions.length > 0 ? (
-                  <div style={{ display: "grid", gap: 10 }}>
-                    <div style={{ fontWeight: 600 }}>Özellikler</div>
-                    {attributeDefinitions.map((def) => (
-                      <div key={def.id}>
-                        {renderAttributeField(
-                          def,
-                          formState.attributes?.[def.key],
-                          (next) => handleAttributeChange(def.key, next),
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : null}
-                <select
-                  className="search-input"
-                  value={formState.cityId}
-                  onChange={(event) => handleChange("cityId", event.target.value)}
-                  required
-                >
-                  <option value="">Şehir seçin</option>
-                  {cities.map((city) => (
-                    <option key={city.id} value={city.id}>
-                      {city.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="search-input"
-                  value={formState.districtId}
-                  onChange={(event) => handleChange("districtId", event.target.value)}
-                  disabled={!formState.cityId}
-                >
-                  <option value="">İlçe seçin</option>
-                  {districts.map((district) => (
-                    <option key={district.id} value={district.id}>
-                      {district.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="search-input"
-                  value={formState.neighborhoodId}
-                  onChange={(event) =>
-                    handleChange("neighborhoodId", event.target.value)
-                  }
-                  disabled={!formState.districtId}
-                >
-                  <option value="">Mahalle seçin</option>
-                  {neighborhoods.map((neighborhood) => (
-                    <option key={neighborhood.id} value={neighborhood.id}>
-                      {neighborhood.name}
-                    </option>
-                  ))}
-                </select>
-                <select
-                  className="search-input"
-                  value={formState.branchId}
-                  onChange={(event) =>
-                    handleChange("branchId", event.target.value)
-                  }
-                  required
-                >
-                  <option value="">Şube seçin</option>
-                  {availableBranches.map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name}
-                    </option>
-                  ))}
-                </select>
-                <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <input
-                    type="checkbox"
-                    checked={formState.isOpportunity}
-                    onChange={(event) =>
-                      handleChange("isOpportunity", event.target.checked)
-                    }
-                  />
-                  Fırsat ilanı
-                </label>
-              </fieldset>
-              {formError ? (
-                <div style={{ color: "var(--color-accent)", fontSize: 12 }}>
-                  {formError}
-                </div>
-              ) : null}
-              <button className="btn" disabled={submitState === "saving" || !isAuthed}>
-                {submitState === "saving" ? "Kaydediliyor..." : "İlan Kaydet"}
-              </button>
-            </form>
+        {deleteError && (
+          <div className="card" style={{ marginBottom: 16, background: "#fee2e2", borderColor: "#ef4444" }}>
+            <div className="card-body" style={{ color: "#dc2626" }}>
+              {deleteError}
+              <button onClick={() => setDeleteError("")} style={{ marginLeft: 12, cursor: "pointer" }}>✕</button>
+            </div>
+          </div>
+        )}
 
-            {editId ? (
+        {successMsg && (
+          <div className="card" style={{ marginBottom: 16, background: "#d1fae5", borderColor: "#10b981" }}>
+            <div className="card-body" style={{ color: "#059669" }}>
+              {successMsg}
+              <button onClick={() => setSuccessMsg("")} style={{ marginLeft: 12, cursor: "pointer" }}>✕</button>
+            </div>
+          </div>
+        )}
+
+        {/* Tabs - Sadece yöneticiler için */}
+        {isManager && (
+          <div style={{ display: "flex", gap: 0, marginBottom: 16 }}>
+            <button
+              className={`btn ${activeTab === "my" ? "" : "btn-outline"}`}
+              style={{ borderRadius: "8px 0 0 8px", minWidth: 140 }}
+              onClick={() => setActiveTab("my")}
+            >
+              <i className="fa-solid fa-user" style={{ marginRight: 8 }}></i>
+              İlanlarım ({myListings.length})
+            </button>
+            <button
+              className={`btn ${activeTab === "all" ? "" : "btn-outline"}`}
+              style={{ borderRadius: "0 8px 8px 0", minWidth: 180 }}
+              onClick={() => setActiveTab("all")}
+            >
+              <i className="fa-solid fa-users" style={{ marginRight: 8 }}></i>
+              Danışman İlanları ({listings.length})
+            </button>
+          </div>
+        )}
+
+        {/* Filters */}
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-body" style={{ display: "flex", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+            <input
+              className="search-input"
+              placeholder="Ara (başlık, ilan no)..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              style={{ maxWidth: 200 }}
+            />
+            <select
+              className="search-input"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              style={{ maxWidth: 120 }}
+            >
+              <option value="">Tüm Durum</option>
+              <option value="FOR_SALE">Satılık</option>
+              <option value="FOR_RENT">Kiralık</option>
+            </select>
+            <select
+              className="search-input"
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              style={{ maxWidth: 130 }}
+            >
+              <option value="">Tüm Kategori</option>
+              <option value="HOUSING">Konut</option>
+              <option value="LAND">Arsa</option>
+              <option value="COMMERCIAL">Ticari</option>
+              <option value="FIELD">Tarla</option>
+              <option value="GARDEN">Bahçe</option>
+              <option value="HOBBY_GARDEN">Hobi Bahçesi</option>
+              <option value="TRANSFER">Devren</option>
+            </select>
+            
+            {/* Şube ve Danışman filtreleri - sadece yöneticiler için "tüm ilanlar" tabında */}
+            {isManager && activeTab === "all" && (
               <>
-                <div
-                  style={{ fontWeight: 700, margin: "20px 0 12px" }}
+                <select
+                  className="search-input"
+                  value={branchFilter}
+                  onChange={(e) => {
+                    setBranchFilter(e.target.value);
+                    setConsultantFilter(""); // Şube değişince danışman filtresini sıfırla
+                  }}
+                  style={{ maxWidth: 150 }}
                 >
-                  İlan Düzenle
-                </div>
-                <form style={{ display: "grid", gap: 10 }} onSubmit={handleUpdate}>
-                  <fieldset
-                    disabled={!isAuthed || editStatus === "loading"}
-                    style={{
-                      border: 0,
-                      padding: 0,
-                      margin: 0,
-                      display: "grid",
-                      gap: 10,
-                    }}
-                  >
-                    <input
-                      className="search-input"
-                      placeholder="Başlık"
-                      value={editState.title}
-                      onChange={(event) => handleEditChange("title", event.target.value)}
-                      minLength={3}
-                      required
-                    />
-                    <textarea
-                      className="search-input"
-                      placeholder="Açıklama"
-                      value={editState.description}
-                      onChange={(event) =>
-                        handleEditChange("description", event.target.value)
-                      }
-                      minLength={10}
-                      rows={4}
-                      required
-                    />
-                    <select
-                      className="search-input"
-                      value={editState.status}
-                      onChange={(event) => handleEditChange("status", event.target.value)}
-                    >
-                      {statusOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="search-input"
-                      value={editState.category}
-                      onChange={(event) => handleEditChange("category", event.target.value)}
-                    >
-                      {categoryOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      className="search-input"
-                      placeholder="Fiyat (TL)"
-                      type="number"
-                      value={editState.price}
-                      onChange={(event) => handleEditChange("price", event.target.value)}
-                    />
-                    <input
-                      className="search-input"
-                      placeholder="Brüt m²"
-                      type="number"
-                      value={editState.areaGross}
-                      onChange={(event) =>
-                        handleEditChange("areaGross", event.target.value)
-                      }
-                    />
-                    <input
-                      className="search-input"
-                      placeholder="Net m²"
-                      type="number"
-                      value={editState.areaNet}
-                      onChange={(event) =>
-                        handleEditChange("areaNet", event.target.value)
-                      }
-                    />
-                    <input
-                      className="search-input"
-                      placeholder="Emlak Tipi (Daire, Dükkan...)"
-                      value={editState.propertyType}
-                      onChange={(event) =>
-                        handleEditChange("propertyType", event.target.value)
-                      }
-                    />
-                    {editAttributeDefinitions.length > 0 ? (
-                      <div style={{ display: "grid", gap: 10 }}>
-                        <div style={{ fontWeight: 600 }}>Özellikler</div>
-                        {editAttributeDefinitions.map((def) => (
-                          <div key={def.id}>
-                            {renderAttributeField(
-                              def,
-                              editState.attributes?.[def.key],
-                              (next) => handleEditAttributeChange(def.key, next),
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ) : null}
-                    <select
-                      className="search-input"
-                      value={editState.cityId}
-                      onChange={(event) => handleEditChange("cityId", event.target.value)}
-                      required
-                    >
-                      <option value="">Şehir seçin</option>
-                      {cities.map((city) => (
-                        <option key={city.id} value={city.id}>
-                          {city.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="search-input"
-                      value={editState.districtId}
-                      onChange={(event) =>
-                        handleEditChange("districtId", event.target.value)
-                      }
-                      disabled={!editState.cityId}
-                    >
-                      <option value="">İlçe seçin</option>
-                      {editDistricts.map((district) => (
-                        <option key={district.id} value={district.id}>
-                          {district.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="search-input"
-                      value={editState.neighborhoodId}
-                      onChange={(event) =>
-                        handleEditChange("neighborhoodId", event.target.value)
-                      }
-                      disabled={!editState.districtId}
-                    >
-                      <option value="">Mahalle seçin</option>
-                      {editNeighborhoods.map((neighborhood) => (
-                        <option key={neighborhood.id} value={neighborhood.id}>
-                          {neighborhood.name}
-                        </option>
-                      ))}
-                    </select>
-                    <select
-                      className="search-input"
-                      value={editState.branchId}
-                      onChange={(event) =>
-                        handleEditChange("branchId", event.target.value)
-                      }
-                      required
-                    >
-                      <option value="">Şube seçin</option>
-                      {availableEditBranches.map((branch) => (
-                        <option key={branch.id} value={branch.id}>
-                          {branch.name}
-                        </option>
-                      ))}
-                    </select>
-                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={editState.isOpportunity}
-                        onChange={(event) =>
-                          handleEditChange("isOpportunity", event.target.checked)
-                        }
-                      />
-                      Fırsat ilanı
-                    </label>
-
-                    {/* SEO Settings Section */}
-                    <div style={{ borderTop: "1px solid var(--color-border)", paddingTop: 12, marginTop: 8 }}>
-                      <div style={{ fontWeight: 600, marginBottom: 8, color: "var(--color-primary)" }}>
-                        <i className="fa-solid fa-search" style={{ marginRight: 6 }}></i>
-                        SEO Ayarları
-                      </div>
-                      <input
-                        className="search-input"
-                        placeholder="SEO URL (slug) - örn: satilik-daire-istanbul"
-                        value={editState.slug}
-                        onChange={(event) => handleEditChange("slug", event.target.value)}
-                      />
-                      <input
-                        className="search-input"
-                        placeholder="Özel Link URL"
-                        value={editState.seoUrl}
-                        onChange={(event) => handleEditChange("seoUrl", event.target.value)}
-                        style={{ marginTop: 8 }}
-                      />
-                      <input
-                        className="search-input"
-                        placeholder="Meta Başlık (60 karakter)"
-                        value={editState.metaTitle}
-                        onChange={(event) => handleEditChange("metaTitle", event.target.value)}
-                        maxLength={70}
-                        style={{ marginTop: 8 }}
-                      />
-                      <textarea
-                        className="search-input"
-                        placeholder="Meta Açıklama (160 karakter)"
-                        value={editState.metaDescription}
-                        onChange={(event) => handleEditChange("metaDescription", event.target.value)}
-                        rows={2}
-                        maxLength={170}
-                        style={{ marginTop: 8, resize: "vertical" }}
-                      />
-                      <input
-                        className="search-input"
-                        placeholder="Anahtar Kelimeler (virgülle ayırın)"
-                        value={editState.metaKeywords}
-                        onChange={(event) => handleEditChange("metaKeywords", event.target.value)}
-                        style={{ marginTop: 8 }}
-                      />
-                      <input
-                        className="search-input"
-                        placeholder="Canonical URL (opsiyonel)"
-                        value={editState.canonicalUrl}
-                        onChange={(event) => handleEditChange("canonicalUrl", event.target.value)}
-                        style={{ marginTop: 8 }}
-                      />
-                    </div>
-                  </fieldset>
-                  {editError ? (
-                    <div style={{ color: "var(--color-accent)", fontSize: 12 }}>
-                      {editError}
-                    </div>
-                  ) : null}
-                  <div style={{ display: "flex", gap: 8 }}>
-                    <button
-                      className="btn"
-                      disabled={editStatus !== "idle" || !isAuthed}
-                    >
-                      {editStatus === "saving" ? "Güncelleniyor..." : "Güncelle"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={resetEditState}
-                    >
-                      Vazgeç
-                    </button>
-                  </div>
-                <div style={{ marginTop: 16 }}>
-                  <div style={{ fontWeight: 700, marginBottom: 8 }}>
-                    İlan Görselleri
-                  </div>
-                  {editImages.length === 0 ? (
-                    <div style={{ fontSize: 12, color: "var(--color-muted)" }}>
-                      Henüz görsel yok.
-                    </div>
-                  ) : (
-                    <div style={{ display: "grid", gap: 8 }}>
-                      {editImages.map((image) => (
-                        <div
-                          key={image.id}
-                          style={{
-                            border: "1px solid var(--color-border)",
-                            borderRadius: 8,
-                            padding: 8,
-                            display: "grid",
-                            gap: 6,
-                          }}
-                        >
-                          <div style={{ fontSize: 12, wordBreak: "break-all" }}>
-                            {image.url}
-                          </div>
-                          <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
-                            {image.isCover ? (
-                              <span className="badge sale">Kapak</span>
-                            ) : null}
-                            <button
-                              type="button"
-                              className="btn btn-outline"
-                              disabled={!isAuthed || Boolean(image.isCover)}
-                              onClick={() => handleSetCover(image.id)}
-                            >
-                              Kapak Yap
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-outline"
-                              disabled={!isAuthed}
-                              onClick={() => handleRemoveImage(image.id)}
-                            >
-                              Sil
-                            </button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  <div style={{ display: "grid", gap: 8, marginTop: 12 }}>
-                    <input
-                      className="search-input"
-                      placeholder="Yeni görsel URL"
-                      value={imageUrl}
-                      onChange={(event) => setImageUrl(event.target.value)}
-                      disabled={!isAuthed}
-                    />
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={handleAddImage}
-                      disabled={!isAuthed || imageStatus === "saving"}
-                    >
-                      {imageStatus === "saving" ? "Ekleniyor..." : "Görsel Ekle"}
-                    </button>
-                    <div style={{ borderTop: "1px solid var(--color-border)", marginTop: 8 }} />
-                    <input
-                      key={fileInputKey}
-                      className="search-input"
-                      type="file"
-                      accept="image/*"
-                      multiple
-                      disabled={!isAuthed}
-                      onChange={(event) => {
-                        const files = event.target.files
-                          ? Array.from(event.target.files)
-                          : [];
-                        setImageFiles(files);
-                      }}
-                    />
-                    <label style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                      <input
-                        type="checkbox"
-                        checked={setFirstAsCover}
-                        onChange={(event) => setSetFirstAsCover(event.target.checked)}
-                        disabled={!isAuthed}
-                      />
-                      İlk dosyayı kapak yap
-                    </label>
-                    <button
-                      type="button"
-                      className="btn btn-outline"
-                      onClick={handleUploadFile}
-                      disabled={!isAuthed || imageStatus === "saving"}
-                    >
-                      {imageStatus === "saving" ? "Yükleniyor..." : "Dosya Yükle"}
-                    </button>
-                    {imageError ? (
-                      <div style={{ color: "var(--color-accent)", fontSize: 12 }}>
-                        {imageError}
-                      </div>
-                    ) : null}
-                  </div>
-                </div>
-                </form>
+                  <option value="">Tüm Şubeler</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+                <select
+                  className="search-input"
+                  value={consultantFilter}
+                  onChange={(e) => setConsultantFilter(e.target.value)}
+                  style={{ maxWidth: 160 }}
+                >
+                  <option value="">Tüm Danışmanlar</option>
+                  {filteredConsultants.map((c) => (
+                    <option key={c.id} value={c.id}>{c.user?.name || "İsimsiz"}</option>
+                  ))}
+                </select>
               </>
-            ) : null}
-          </aside>
+            )}
+            
+            <select
+              className="search-input"
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value)}
+              style={{ maxWidth: 140 }}
+            >
+              <option value="newest">En Yeni</option>
+              <option value="oldest">En Eski</option>
+              <option value="price-asc">Fiyat (Artan)</option>
+              <option value="price-desc">Fiyat (Azalan)</option>
+              <option value="title">Başlık (A-Z)</option>
+            </select>
+            <button className="btn btn-outline" onClick={loadData} style={{ marginLeft: "auto" }}>
+              <i className="fa-solid fa-refresh"></i>
+            </button>
+          </div>
+        </div>
 
-          <section>
-            <div className="card">
-              <div className="card-body">
-                <div style={{ fontWeight: 700, marginBottom: 12, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span>Mevcut İlanlar ({listings.length})</span>
-                </div>
-                
-                {/* Filters */}
-                <div style={{ display: "flex", gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-                  <input
-                    className="search-input"
-                    placeholder="Ara (başlık, ilan no)..."
-                    style={{ maxWidth: 180 }}
-                    onChange={(e) => {
-                      const val = e.target.value.toLowerCase();
-                      // Filter is applied via filteredListings
-                    }}
-                    id="listing-search"
-                  />
-                  <select
-                    className="search-input"
-                    style={{ maxWidth: 100 }}
-                    id="listing-status-filter"
-                    defaultValue=""
-                  >
-                    <option value="">Tüm Durum</option>
-                    <option value="FOR_SALE">Satılık</option>
-                    <option value="FOR_RENT">Kiralık</option>
-                  </select>
-                  <select
-                    className="search-input"
-                    style={{ maxWidth: 100 }}
-                    id="listing-category-filter"
-                    defaultValue=""
-                  >
-                    <option value="">Tüm Kategori</option>
-                    <option value="HOUSING">Konut</option>
-                    <option value="LAND">Arsa</option>
-                    <option value="COMMERCIAL">Ticari</option>
-                    <option value="FIELD">Tarla</option>
-                    <option value="GARDEN">Bahçe</option>
-                    <option value="HOBBY_GARDEN">Hobi Bahçesi</option>
-                    <option value="TRANSFER">Devren</option>
-                  </select>
-                  <select
-                    className="search-input"
-                    style={{ maxWidth: 130 }}
-                    id="listing-branch-filter"
-                    defaultValue=""
-                  >
-                    <option value="">Tüm Şubeler</option>
-                    {branches.map((branch) => (
-                      <option key={branch.id} value={branch.id}>
-                        {branch.name}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    className="search-input"
-                    style={{ maxWidth: 120 }}
-                    id="listing-sort"
-                    defaultValue="newest"
-                  >
-                    <option value="newest">En Yeni</option>
-                    <option value="oldest">En Eski</option>
-                    <option value="price-asc">Fiyat (Artan)</option>
-                    <option value="price-desc">Fiyat (Azalan)</option>
-                    <option value="title">Başlık (A-Z)</option>
-                  </select>
-                </div>
-
-                {isLoading ? <div>Yükleniyor...</div> : null}
-                {!isLoading && listings.length === 0 ? (
-                  <div>Henüz ilan yok.</div>
-                ) : null}
-                
-                {/* Table View */}
-                <div style={{ overflowX: "auto" }}>
-                  <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "left" }}>
-                        <th style={{ padding: "8px 4px", width: 60 }}>Foto</th>
-                        <th style={{ padding: "8px 4px", width: 70 }}>Durum</th>
-                        <th style={{ padding: "8px 4px", width: 80 }}>İlan No</th>
-                        <th style={{ padding: "8px 4px" }}>Başlık</th>
-                        <th style={{ padding: "8px 4px", width: 100 }}>Mahalle</th>
-                        <th style={{ padding: "8px 4px", width: 60 }}>Oda</th>
-                        <th style={{ padding: "8px 4px", width: 50 }}>Kat</th>
-                        <th style={{ padding: "8px 4px", width: 50 }}>Yaş</th>
-                        <th style={{ padding: "8px 4px", width: 100 }}>Fiyat</th>
-                        <th style={{ padding: "8px 4px", width: 120 }}>İşlem</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {listings.map((listing) => {
-                        const coverImage = listing.images?.find(img => img.isCover) || listing.images?.[0];
-                        const attrs = listing.attributes as Record<string, string> | null;
-                        const roomCount = attrs?.odaSayisi || attrs?.["oda_sayisi"] || "-";
-                        const floor = attrs?.bulunduguKat || attrs?.["bulundugu_kat"] || "-";
-                        const totalFloors = attrs?.katSayisi || attrs?.["kat_sayisi"] || "";
-                        const floorDisplay = totalFloors ? `${floor}/${totalFloors}` : floor;
-                        const buildingAge = attrs?.binaYasi || attrs?.["bina_yasi"] || "-";
-                        const listingNo = listing.id.slice(-6).toUpperCase();
-                        
-                        return (
-                          <tr 
-                            key={listing.id} 
-                            style={{ 
-                              borderBottom: "1px solid var(--color-border)",
-                              background: "#fff",
-                            }}
-                          >
-                            <td style={{ padding: "6px 4px" }}>
-                              {coverImage ? (
-                                <img
-                                  src={coverImage.url.startsWith("http") ? coverImage.url : `${API_BASE_URL}${coverImage.url}`}
-                                  alt=""
-                                  style={{ width: 50, height: 35, objectFit: "cover", borderRadius: 4 }}
-                                />
-                              ) : (
-                                <div style={{ width: 50, height: 35, background: "#f0f0f0", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                  <i className="fa-solid fa-image" style={{ color: "#ccc" }}></i>
-                                </div>
-                              )}
+        {/* Listings Table */}
+        <div className="card">
+          <div className="card-body" style={{ padding: 0 }}>
+            {isLoading ? (
+              <div style={{ padding: 24, textAlign: "center" }}>Yükleniyor...</div>
+            ) : filteredListings.length === 0 ? (
+              <div style={{ padding: 24, textAlign: "center" }}>
+                {currentListings.length === 0 ? "Henüz ilan yok." : "Filtrelere uygun ilan bulunamadı."}
+              </div>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 13 }}>
+                  <thead>
+                    <tr style={{ borderBottom: "2px solid var(--color-border)", textAlign: "left", background: "#f9fafb" }}>
+                      <th style={{ padding: "12px 8px", width: 60 }}>Foto</th>
+                      <th style={{ padding: "12px 8px", width: 75 }}>İlan No</th>
+                      <th style={{ padding: "12px 8px", width: 70 }}>Durum</th>
+                      <th style={{ padding: "12px 8px" }}>Başlık</th>
+                      <th style={{ padding: "12px 8px", width: 90 }}>Kategori</th>
+                      {isManager && activeTab === "all" && (
+                        <th style={{ padding: "12px 8px", width: 120 }}>Danışman</th>
+                      )}
+                      <th style={{ padding: "12px 8px", width: 100 }}>Konum</th>
+                      <th style={{ padding: "12px 8px", width: 100 }}>Fiyat</th>
+                      <th style={{ padding: "12px 8px", width: isManager ? 150 : 110 }}>İşlem</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredListings.map((listing) => {
+                      const coverImage = listing.images?.find(img => img.isCover) || listing.images?.[0];
+                      
+                      return (
+                        <tr key={listing.id} style={{ borderBottom: "1px solid var(--color-border)" }}>
+                          <td style={{ padding: "8px" }}>
+                            {coverImage ? (
+                              <img
+                                src={coverImage.url.startsWith("http") ? coverImage.url : `${API_BASE_URL}${coverImage.url}`}
+                                alt=""
+                                style={{ width: 50, height: 40, objectFit: "cover", borderRadius: 4 }}
+                              />
+                            ) : (
+                              <div style={{ width: 50, height: 40, background: "#f0f0f0", borderRadius: 4, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                <i className="fa-solid fa-image" style={{ color: "#ccc" }}></i>
+                              </div>
+                            )}
+                          </td>
+                          <td style={{ padding: "8px", fontFamily: "monospace", fontSize: 11 }}>
+                            #{listing.listingNo || listing.id.slice(-5)}
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            <span className={`badge ${getStatusClass(listing.status)}`} style={{ fontSize: 10, padding: "2px 6px" }}>
+                              {getStatusLabel(listing.status)}
+                            </span>
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            <div style={{ fontWeight: 600, maxWidth: 200, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                              {listing.title}
+                            </div>
+                          </td>
+                          <td style={{ padding: "8px", fontSize: 11 }}>
+                            {categoryLabels[listing.category || ""] || listing.category}
+                          </td>
+                          {isManager && activeTab === "all" && (
+                            <td style={{ padding: "8px", fontSize: 11 }}>
+                              <div>{listing.consultant?.user?.name || listing.createdBy?.name || "-"}</div>
+                              <div style={{ color: "var(--color-muted)", fontSize: 10 }}>
+                                {listing.branch?.name}
+                              </div>
                             </td>
-                            <td style={{ padding: "6px 4px" }}>
-                              <span 
-                                className={`badge ${getStatusClass(listing.status)}`}
-                                style={{ fontSize: 10, padding: "2px 6px" }}
+                          )}
+                          <td style={{ padding: "8px", fontSize: 11 }}>
+                            <div>{listing.city?.name}</div>
+                            <div style={{ color: "var(--color-muted)", fontSize: 10 }}>
+                              {listing.district?.name}
+                            </div>
+                          </td>
+                          <td style={{ padding: "8px", fontWeight: 600, color: "var(--color-primary)", fontSize: 12 }}>
+                            {formatPrice(listing.price)}
+                          </td>
+                          <td style={{ padding: "8px" }}>
+                            <div style={{ display: "flex", gap: 4 }}>
+                              <Link
+                                href={`/listings/${listing.id}`}
+                                className="btn btn-outline"
+                                style={{ padding: "5px 8px", fontSize: 10 }}
+                                title="Görüntüle"
                               >
-                                {getStatusLabel(listing.status)}
-                              </span>
-                            </td>
-                            <td style={{ padding: "6px 4px", fontFamily: "monospace", fontSize: 11 }}>
-                              #{listingNo}
-                            </td>
-                            <td style={{ padding: "6px 4px", maxWidth: 200 }}>
-                              <div style={{ fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                {listing.title}
-                              </div>
-                              <div style={{ fontSize: 11, color: "var(--color-muted)" }}>
-                                {listing.city?.name}
-                              </div>
-                            </td>
-                            <td style={{ padding: "6px 4px", fontSize: 11 }}>
-                              {listing.neighborhood?.name || listing.district?.name || "-"}
-                            </td>
-                            <td style={{ padding: "6px 4px", textAlign: "center" }}>{roomCount}</td>
-                            <td style={{ padding: "6px 4px", textAlign: "center" }}>{floorDisplay}</td>
-                            <td style={{ padding: "6px 4px", textAlign: "center" }}>{buildingAge}</td>
-                            <td style={{ padding: "6px 4px", fontWeight: 600, color: "var(--color-primary)" }}>
-                              {formatPrice(listing.price)}
-                            </td>
-                            <td style={{ padding: "6px 4px" }}>
-                              <div style={{ display: "flex", gap: 4 }}>
-                                <Link
-                                  className="btn btn-outline"
-                                  href={`/listings/${listing.id}`}
-                                  style={{ padding: "4px 8px", fontSize: 10 }}
-                                >
-                                  <i className="fa-solid fa-eye"></i>
-                                </Link>
+                                <i className="fa-solid fa-eye"></i>
+                              </Link>
+                              <Link
+                                href={`/admin/listings/${listing.id}/edit`}
+                                className="btn btn-outline"
+                                style={{ padding: "5px 8px", fontSize: 10 }}
+                                title="Düzenle"
+                              >
+                                <i className="fa-solid fa-edit"></i>
+                              </Link>
+                              {/* Transfer butonu - sadece yöneticiler için */}
+                              {isManager && activeTab === "all" && (
                                 <button
                                   className="btn btn-outline"
-                                  onClick={() => loadListingForEdit(listing.id)}
-                                  disabled={!isAuthed}
-                                  style={{ padding: "4px 8px", fontSize: 10 }}
+                                  onClick={() => setTransferModal({ listingId: listing.id, title: listing.title })}
+                                  style={{ padding: "5px 8px", fontSize: 10 }}
+                                  title="Transfer Et"
                                 >
-                                  <i className="fa-solid fa-edit"></i>
+                                  <i className="fa-solid fa-right-left"></i>
                                 </button>
-                                <button
-                                  className="btn btn-outline"
-                                  onClick={() => handleDelete(listing.id)}
-                                  disabled={!isAuthed}
-                                  style={{ padding: "4px 8px", fontSize: 10 }}
-                                >
-                                  <i className="fa-solid fa-trash"></i>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+                              )}
+                              <button
+                                className="btn btn-outline"
+                                onClick={() => handleDelete(listing.id)}
+                                disabled={!isAuthed}
+                                style={{ padding: "5px 8px", fontSize: 10, color: "#dc2626", borderColor: "#dc2626" }}
+                                title="Sil"
+                              >
+                                <i className="fa-solid fa-trash"></i>
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div style={{ marginTop: 16, fontSize: 13, color: "var(--color-muted)", textAlign: "center" }}>
+          {filteredListings.length} / {currentListings.length} ilan gösteriliyor
+        </div>
+
+        {/* Transfer Modal */}
+        {transferModal && (
+          <div style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0,0,0,0.5)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1000,
+          }}>
+            <div className="card" style={{ width: "100%", maxWidth: 450, margin: 16 }}>
+              <div className="card-body">
+                <h3 style={{ margin: "0 0 16px" }}>İlan Transfer Et</h3>
+                <p style={{ fontSize: 14, color: "var(--color-muted)", marginBottom: 16 }}>
+                  <strong>&quot;{transferModal.title}&quot;</strong> ilanını başka bir danışmana transfer ediyorsunuz.
+                </p>
+                
+                <label className="form-label">Şube Seçin</label>
+                <select
+                  className="form-select"
+                  value={branchFilter}
+                  onChange={(e) => {
+                    setBranchFilter(e.target.value);
+                    setTransferConsultantId("");
+                  }}
+                  style={{ marginBottom: 12 }}
+                >
+                  <option value="">Tüm Şubeler</option>
+                  {branches.map((branch) => (
+                    <option key={branch.id} value={branch.id}>{branch.name}</option>
+                  ))}
+                </select>
+
+                <label className="form-label">Danışman Seçin *</label>
+                <select
+                  className="form-select"
+                  value={transferConsultantId}
+                  onChange={(e) => setTransferConsultantId(e.target.value)}
+                  style={{ marginBottom: 20 }}
+                >
+                  <option value="">Danışman Seçin</option>
+                  {filteredConsultants.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.user?.name || "İsimsiz"} {c.branch ? `(${c.branch.name})` : ""}
+                    </option>
+                  ))}
+                </select>
+
+                <div style={{ display: "flex", gap: 12, justifyContent: "flex-end" }}>
+                  <button
+                    className="btn btn-outline"
+                    onClick={() => {
+                      setTransferModal(null);
+                      setTransferConsultantId("");
+                    }}
+                  >
+                    İptal
+                  </button>
+                  <button
+                    className="btn"
+                    onClick={handleTransfer}
+                    disabled={!transferConsultantId}
+                  >
+                    <i className="fa-solid fa-right-left" style={{ marginRight: 8 }}></i>
+                    Transfer Et
+                  </button>
                 </div>
               </div>
             </div>
-          </section>
-        </div>
+          </div>
+        )}
       </div>
     </main>
   );

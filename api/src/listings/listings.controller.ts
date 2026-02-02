@@ -50,6 +50,46 @@ const multerOptions = {
   limits: { fileSize: 5 * 1024 * 1024 },
 };
 
+// Video yükleme için multer ayarları
+const videoMulterOptions = {
+  storage: diskStorage({
+    destination: uploadsDir,
+    filename: (_req, file, callback) => {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const extension = extname(file.originalname);
+      callback(null, `video-${uniqueSuffix}${extension}`);
+    },
+  }),
+  fileFilter: (_req, file, callback) => {
+    if (file.mimetype.startsWith('video/')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Only video files are allowed'), false);
+    }
+  },
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+};
+
+// 360 panorama yükleme için multer ayarları
+const panoramaMulterOptions = {
+  storage: diskStorage({
+    destination: uploadsDir,
+    filename: (_req, file, callback) => {
+      const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+      const extension = extname(file.originalname);
+      callback(null, `panorama-${uniqueSuffix}${extension}`);
+    },
+  }),
+  fileFilter: (_req, file, callback) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      callback(null, true);
+    } else {
+      callback(new Error('Only image or video files are allowed'), false);
+    }
+  },
+  limits: { fileSize: 100 * 1024 * 1024 }, // 100MB
+};
+
 @Controller('listings')
 export class ListingsController {
   constructor(private readonly listingsService: ListingsService) {}
@@ -75,6 +115,71 @@ export class ListingsController {
     },
   ) {
     return this.listingsService.findAll(query);
+  }
+
+  // Şube içi gelişmiş arama
+  @Get('search')
+  search(
+    @Query()
+    query: {
+      branchSlug: string;
+      q?: string;
+      neighborhoodIds?: string;
+      includeNeighbors?: string;
+      maxNeighborDistance?: string;
+      status?: string;
+      category?: string;
+      districtId?: string;
+      minPrice?: string;
+      maxPrice?: string;
+      roomCount?: string;
+      buildingAge?: string;
+      subPropertyType?: string;
+      take?: string;
+      skip?: string;
+      sort?: string;
+      order?: 'asc' | 'desc';
+    },
+  ) {
+    return this.listingsService.search({
+      ...query,
+      neighborhoodIds: query.neighborhoodIds ? query.neighborhoodIds.split(',') : undefined,
+      includeNeighbors: query.includeNeighbors === 'true',
+      maxNeighborDistance: query.maxNeighborDistance ? parseFloat(query.maxNeighborDistance) : undefined,
+      roomCount: query.roomCount ? query.roomCount.split(',') : undefined,
+    });
+  }
+
+  // Kullanıcının kendi ilanları
+  @UseGuards(JwtAuthGuard)
+  @Get('my-listings')
+  findMyListings(
+    @UserPayloadDecorator() user: UserPayload,
+    @Query() query: { status?: string; category?: string; q?: string },
+  ) {
+    return this.listingsService.findByCreator(user.sub, query);
+  }
+
+  // Tüm ilanlar (yöneticiler için)
+  @UseGuards(JwtAuthGuard)
+  @Get('all-listings')
+  findAllListings(
+    @UserPayloadDecorator() user: UserPayload,
+    @Query() query: {
+      status?: string;
+      category?: string;
+      branchId?: string;
+      consultantId?: string;
+      createdById?: string;
+      q?: string;
+    },
+  ) {
+    // Sadece ADMIN ve yönetici roller tüm ilanları görebilir
+    const managerRoles = ['ADMIN', 'BROKER', 'FIRM_OWNER', 'REAL_ESTATE_EXPERT'];
+    if (!managerRoles.includes(user.role)) {
+      return this.listingsService.findByCreator(user.sub, query);
+    }
+    return this.listingsService.findAllForAdmin(query);
   }
 
   @Get(':id')
@@ -141,5 +246,52 @@ export class ListingsController {
     @Body() body: UploadListingImagesDto,
   ) {
     return this.listingsService.addUploadedImages(id, files, body);
+  }
+
+  // Video yükleme
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/video/upload')
+  @UseInterceptors(FileInterceptor('file', videoMulterOptions))
+  uploadVideo(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+  ) {
+    return this.listingsService.setVideo(id, file);
+  }
+
+  // Video silme
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/video')
+  removeVideo(@Param('id') id: string) {
+    return this.listingsService.removeVideo(id);
+  }
+
+  // 360 Panorama / Sanal tur yükleme
+  @UseGuards(JwtAuthGuard)
+  @Post(':id/virtual-tour/upload')
+  @UseInterceptors(FileInterceptor('file', panoramaMulterOptions))
+  uploadVirtualTour(
+    @Param('id') id: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('tourType') tourType: string,
+  ) {
+    return this.listingsService.setVirtualTour(id, file, tourType || 'PANORAMA');
+  }
+
+  // Sanal tur silme
+  @UseGuards(JwtAuthGuard)
+  @Delete(':id/virtual-tour')
+  removeVirtualTour(@Param('id') id: string) {
+    return this.listingsService.removeVirtualTour(id);
+  }
+
+  // İlan transfer (başka danışmana ata)
+  @UseGuards(JwtAuthGuard)
+  @Patch(':id/transfer')
+  transferListing(
+    @Param('id') id: string,
+    @Body() body: { consultantId: string },
+  ) {
+    return this.listingsService.transferListing(id, body.consultantId);
   }
 }

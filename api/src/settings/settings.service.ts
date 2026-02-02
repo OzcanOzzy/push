@@ -34,9 +34,35 @@ export class SettingsService {
   }
 
   updateSettings(data: UpdateSettingsDto) {
+    // Sadece Prisma schema'da olan alanları filtrele
+    const allowedFields = [
+      'siteName', 'logoUrl', 'ownerName', 'ownerTitle', 'showOwnerTitle',
+      'phoneNumber', 'whatsappNumber', 'email', 'supportEmail', 'address',
+      'primaryColor', 'accentColor', 'backgroundColor', 'textColor',
+      'heroBackgroundUrl', 'heroOverlayColor', 'heroOverlayOpacity',
+      'bannerWidth', 'bannerHeight', 'bannerOpacity',
+      'logoWidth', 'logoHeight', 'logoPositionX', 'logoPositionY',
+      'logoTagline', 'logoTaglineFont', 'logoTaglineFontSize', 'logoTaglineColor',
+      'logoSubtitleText', 'logoSubtitleFont', 'logoSubtitleFontSize',
+      'logoSubtitleColor', 'logoSubtitleBgColor', 'showLogoSubtitle',
+      'faviconUrl',
+      'profileImageUrl', 'profileImageWidth', 'profileImageHeight',
+      'profilePositionX', 'profilePositionY', 'profileOpacity',
+      'profileTitleLabel', 'profileTitleFont', 'profileTitleSize', 'profileTitleColor',
+      'profileNameFont', 'profileNameSize', 'profileNameColor',
+      'viewAllBtnText', 'viewAllBtnBgColor', 'viewAllBtnTextColor',
+    ];
+
+    const filteredData: Record<string, unknown> = {};
+    for (const key of allowedFields) {
+      if (key in data && data[key as keyof UpdateSettingsDto] !== undefined) {
+        filteredData[key] = data[key as keyof UpdateSettingsDto];
+      }
+    }
+
     return this.prisma.siteSetting.upsert({
       where: { id: DEFAULT_ID },
-      update: data,
+      update: filteredData,
       create: {
         id: DEFAULT_ID,
         siteName: data.siteName ?? 'Emlaknomi',
@@ -51,6 +77,7 @@ export class SettingsService {
         accentColor: data.accentColor ?? '#e20b0b',
         backgroundColor: data.backgroundColor ?? '#e9e9f0',
         textColor: data.textColor ?? '#122033',
+        ...filteredData,
       },
     });
   }

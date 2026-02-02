@@ -72,7 +72,7 @@ export default function SubelerPage() {
               return (
                 <Link
                   key={btn.id}
-                  href={`/${btn.slug}`}
+                  href={`/subeler/${btn.slug}`}
                   className="branch-card"
                   style={{
                     width,

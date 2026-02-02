@@ -43,6 +43,13 @@ export default function CorporateHeader() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [socialLinksFromApi, setSocialLinksFromApi] = useState<SocialLink[]>([]);
 
+  // Sayfa değişince arama barını temizle (arama sayfası hariç)
+  useEffect(() => {
+    if (!pathname.startsWith("/arama")) {
+      setSearchQuery("");
+    }
+  }, [pathname]);
+
   useEffect(() => {
     // Load menu items from API
     fetch(`${API_BASE_URL}/menu-items`)
@@ -76,7 +83,9 @@ export default function CorporateHeader() {
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     if (searchQuery.trim()) {
-      router.push(`/arama?q=${encodeURIComponent(searchQuery.trim())}`);
+      const query = searchQuery.trim();
+      setSearchQuery(""); // Arama sonrası temizle
+      router.push(`/arama?q=${encodeURIComponent(query)}`);
     }
   };
 
@@ -178,10 +187,10 @@ export default function CorporateHeader() {
             );
           })}
         </nav>
-        <Link href="/admin/login" className="corp-consultant-btn">
-          <i className="fa-solid fa-user"></i>
-          Danışman Girişi
-        </Link>
+        <a href="/admin/login" className="corp-consultant-btn" title="Danışman Girişi">
+          <i className="fa-solid fa-user" aria-hidden={true} />
+          <span className="corp-consultant-btn-text">Danışman Girişi</span>
+        </a>
       </div>
 
       {/* Logo & Social Row */}
@@ -241,7 +250,7 @@ export default function CorporateHeader() {
                 type="button"
                 className="corp-filter-btn"
                 aria-label="Filtreler"
-                onClick={() => router.push("/arama")}
+                onClick={() => router.push("/arama?showFilters=true")}
               >
                 <i className="fa-solid fa-sliders"></i>
               </button>

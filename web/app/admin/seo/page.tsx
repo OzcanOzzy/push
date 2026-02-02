@@ -228,7 +228,7 @@ export default function AdminSeoPage() {
               </label>
               <input
                 className="form-input"
-                value={settings.metaTitle}
+                value={settings.metaTitle || ""}
                 onChange={(e) => setSettings({ ...settings, metaTitle: e.target.value })}
                 placeholder="Emlaknomi - Gayrimenkul Uzmanı | Satılık & Kiralık İlanlar"
                 maxLength={70}
@@ -244,9 +244,12 @@ export default function AdminSeoPage() {
                 </span>
               </label>
               <textarea
-                className="form-textarea"
-                value={settings.metaDescription}
-                onChange={(e) => setSettings({ ...settings, metaDescription: e.target.value })}
+  className="form-textarea"
+  // settings.metaDescription null ise boş bir metin ("") kullan
+  value={settings.metaDescription || ""} 
+  onChange={(e) => setSettings({ ...settings, metaDescription: e.target.value })}
+  rows={5} // (varsa diğer özellikler)
+/>
                 placeholder="Türkiye'nin önde gelen gayrimenkul danışmanlık firması. Satılık ve kiralık konut, arsa, ticari gayrimenkul ilanları."
                 maxLength={170}
                 rows={3}

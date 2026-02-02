@@ -18,6 +18,8 @@ interface MobileSettings {
   // Sosyal
   mobileSocialSize: number;
   mobileSocialShow: boolean;
+  mobileSocialGap: number;
+  mobileSocialPosition: "left" | "right";
   // Arama
   mobileSearchWidth: number;
   mobileSearchHeight: number;
@@ -39,6 +41,8 @@ interface MobileSettings {
   mobileActionHeight: number;
   mobileActionFontSize: number;
   mobileActionBorderRadius: number;
+  mobileActionAlign: "left" | "center" | "right" | "stretch";
+  mobileActionWidth: number;
   // İlanlar
   mobileListingColumns: number;
   mobileListingGap: number;
@@ -53,6 +57,8 @@ const defaultMobileSettings: MobileSettings = {
   mobileLogoAlign: "center",
   mobileSocialSize: 22,
   mobileSocialShow: true,
+  mobileSocialGap: 4,
+  mobileSocialPosition: "left",
   mobileSearchWidth: 40,
   mobileSearchHeight: 24,
   mobileSearchShow: true,
@@ -70,6 +76,8 @@ const defaultMobileSettings: MobileSettings = {
   mobileActionHeight: 40,
   mobileActionFontSize: 10,
   mobileActionBorderRadius: 6,
+  mobileActionAlign: "stretch",
+  mobileActionWidth: 80,
   mobileListingColumns: 2,
   mobileListingGap: 8,
 };
@@ -126,6 +134,8 @@ export default function MobileSettingsPage() {
         mobileLogoAlign: settings.mobileLogoAlign || null,
         mobileSocialSize: settings.mobileSocialSize ? Number(settings.mobileSocialSize) : null,
         mobileSocialShow: Boolean(settings.mobileSocialShow),
+        mobileSocialGap: settings.mobileSocialGap ? Number(settings.mobileSocialGap) : null,
+        mobileSocialPosition: settings.mobileSocialPosition || null,
         mobileSearchWidth: settings.mobileSearchWidth ? Number(settings.mobileSearchWidth) : null,
         mobileSearchHeight: settings.mobileSearchHeight ? Number(settings.mobileSearchHeight) : null,
         mobileSearchShow: Boolean(settings.mobileSearchShow),
@@ -143,6 +153,8 @@ export default function MobileSettingsPage() {
         mobileActionHeight: settings.mobileActionHeight ? Number(settings.mobileActionHeight) : null,
         mobileActionFontSize: settings.mobileActionFontSize ? Number(settings.mobileActionFontSize) : null,
         mobileActionBorderRadius: settings.mobileActionBorderRadius ? Number(settings.mobileActionBorderRadius) : null,
+        mobileActionAlign: settings.mobileActionAlign || null,
+        mobileActionWidth: settings.mobileActionWidth ? Number(settings.mobileActionWidth) : null,
         mobileListingColumns: settings.mobileListingColumns ? Number(settings.mobileListingColumns) : null,
         mobileListingGap: settings.mobileListingGap ? Number(settings.mobileListingGap) : null,
       };
@@ -174,26 +186,36 @@ export default function MobileSettingsPage() {
 
   const applyMobileCSS = () => {
     const root = document.documentElement;
-    root.style.setProperty("--mobile-header-padding", settings.mobileHeaderPadding);
-    root.style.setProperty("--mobile-nav-font-size", `${settings.mobileNavFontSize}px`);
-    root.style.setProperty("--mobile-logo-row-padding", settings.mobileLogoRowPadding);
-    root.style.setProperty("--mobile-logo-height", `${settings.mobileLogoHeight}px`);
-    root.style.setProperty("--mobile-logo-sub-size", `${settings.mobileLogoSubSize}px`);
-    root.style.setProperty("--mobile-social-size", `${settings.mobileSocialSize}px`);
-    root.style.setProperty("--mobile-search-width", `${settings.mobileSearchWidth}px`);
-    root.style.setProperty("--mobile-search-height", `${settings.mobileSearchHeight}px`);
-    root.style.setProperty("--mobile-banner-height", `${settings.mobileBannerHeight}px`);
-    root.style.setProperty("--mobile-banner-radius", `${settings.mobileBannerBorderRadius}px`);
-    root.style.setProperty("--mobile-branch-columns", String(settings.mobileBranchColumns));
-    root.style.setProperty("--mobile-branch-gap", `${settings.mobileBranchGap}px`);
-    root.style.setProperty("--mobile-branch-radius", `${settings.mobileBranchBorderRadius}px`);
-    root.style.setProperty("--mobile-action-columns", String(settings.mobileActionColumns));
-    root.style.setProperty("--mobile-action-gap", `${settings.mobileActionGap}px`);
-    root.style.setProperty("--mobile-action-height", `${settings.mobileActionHeight}px`);
-    root.style.setProperty("--mobile-action-font-size", `${settings.mobileActionFontSize}px`);
-    root.style.setProperty("--mobile-action-radius", `${settings.mobileActionBorderRadius}px`);
-    root.style.setProperty("--mobile-listing-columns", String(settings.mobileListingColumns));
-    root.style.setProperty("--mobile-listing-gap", `${settings.mobileListingGap}px`);
+    root.style.setProperty("--mobile-header-padding", settings.mobileHeaderPadding ?? "4px 8px");
+    root.style.setProperty("--mobile-nav-font-size", `${settings.mobileNavFontSize ?? 10}px`);
+    root.style.setProperty("--mobile-logo-row-padding", settings.mobileLogoRowPadding ?? "18px 12px");
+    root.style.setProperty("--mobile-logo-height", `${settings.mobileLogoHeight ?? 28}px`);
+    root.style.setProperty("--mobile-logo-sub-size", `${settings.mobileLogoSubSize ?? 9}px`);
+    root.style.setProperty("--mobile-social-size", `${settings.mobileSocialSize ?? 22}px`);
+    root.style.setProperty("--mobile-social-gap", `${settings.mobileSocialGap ?? 4}px`);
+    root.style.setProperty("--mobile-social-position", settings.mobileSocialPosition ?? "left");
+    root.style.setProperty("--mobile-search-width", `${settings.mobileSearchWidth ?? 40}px`);
+    root.style.setProperty("--mobile-search-height", `${settings.mobileSearchHeight ?? 24}px`);
+    root.style.setProperty("--mobile-banner-height", `${settings.mobileBannerHeight ?? 120}px`);
+    root.style.setProperty("--mobile-banner-radius", `${settings.mobileBannerBorderRadius ?? 8}px`);
+    root.style.setProperty("--mobile-branch-columns", String(settings.mobileBranchColumns ?? 3));
+    root.style.setProperty("--mobile-branch-gap", `${settings.mobileBranchGap ?? 6}px`);
+    root.style.setProperty("--mobile-branch-radius", `${settings.mobileBranchBorderRadius ?? 8}px`);
+    root.style.setProperty("--mobile-branch-align", settings.mobileBranchAlign ?? "stretch");
+    root.style.setProperty("--mobile-action-columns", String(settings.mobileActionColumns ?? 2));
+    root.style.setProperty("--mobile-action-gap", `${settings.mobileActionGap ?? 6}px`);
+    root.style.setProperty("--mobile-action-height", `${settings.mobileActionHeight ?? 40}px`);
+    root.style.setProperty("--mobile-action-font-size", `${settings.mobileActionFontSize ?? 10}px`);
+    root.style.setProperty("--mobile-action-radius", `${settings.mobileActionBorderRadius ?? 6}px`);
+    // CSS align-items için değer dönüşümü
+    const actionAlign = settings.mobileActionAlign ?? "stretch";
+    const alignValue = actionAlign === 'left' ? 'flex-start' 
+      : actionAlign === 'right' ? 'flex-end' 
+      : actionAlign;
+    root.style.setProperty("--mobile-action-align", alignValue);
+    root.style.setProperty("--mobile-action-width", `${settings.mobileActionWidth ?? 100}%`);
+    root.style.setProperty("--mobile-listing-columns", String(settings.mobileListingColumns ?? 2));
+    root.style.setProperty("--mobile-listing-gap", `${settings.mobileListingGap ?? 8}px`);
   };
 
   const resetToDefaults = () => {
@@ -307,7 +329,7 @@ export default function MobileSettingsPage() {
                       <input
                         type="number"
                         className="form-input"
-                        value={settings.mobileNavFontSize}
+                        value={settings.mobileNavFontSize ?? defaultMobileSettings.mobileNavFontSize}
                         onChange={(e) => setSettings({ ...settings, mobileNavFontSize: Number(e.target.value) })}
                         min={8}
                         max={16}
@@ -319,7 +341,7 @@ export default function MobileSettingsPage() {
                       <input
                         type="text"
                         className="form-input"
-                        value={settings.mobileHeaderPadding}
+                        value={settings.mobileHeaderPadding ?? defaultMobileSettings.mobileHeaderPadding}
                         onChange={(e) => setSettings({ ...settings, mobileHeaderPadding: e.target.value })}
                         placeholder="4px 8px"
                       />
@@ -333,7 +355,7 @@ export default function MobileSettingsPage() {
                       <input
                         type="text"
                         className="form-input"
-                        value={settings.mobileLogoRowPadding}
+                        value={settings.mobileLogoRowPadding ?? defaultMobileSettings.mobileLogoRowPadding}
                         onChange={(e) => setSettings({ ...settings, mobileLogoRowPadding: e.target.value })}
                         placeholder="18px 12px"
                       />
@@ -356,7 +378,7 @@ export default function MobileSettingsPage() {
                       <input
                         type="number"
                         className="form-input"
-                        value={settings.mobileLogoHeight}
+                        value={settings.mobileLogoHeight ?? defaultMobileSettings.mobileLogoHeight}
                         onChange={(e) => setSettings({ ...settings, mobileLogoHeight: Number(e.target.value) })}
                         min={20}
                         max={60}
@@ -368,7 +390,7 @@ export default function MobileSettingsPage() {
                       <input
                         type="number"
                         className="form-input"
-                        value={settings.mobileLogoSubSize}
+                        value={settings.mobileLogoSubSize ?? defaultMobileSettings.mobileLogoSubSize}
                         onChange={(e) => setSettings({ ...settings, mobileLogoSubSize: Number(e.target.value) })}
                         min={6}
                         max={16}
@@ -379,7 +401,7 @@ export default function MobileSettingsPage() {
                       <label className="form-label">Logo Hizalama</label>
                       <select
                         className="form-select"
-                        value={settings.mobileLogoAlign}
+                        value={settings.mobileLogoAlign ?? defaultMobileSettings.mobileLogoAlign}
                         onChange={(e) => setSettings({ ...settings, mobileLogoAlign: e.target.value as MobileSettings["mobileLogoAlign"] })}
                       >
                         <option value="left">Sola</option>
@@ -393,7 +415,7 @@ export default function MobileSettingsPage() {
                 <div className="admin-card">
                   <h3 style={{ margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
                     <i className="fa-solid fa-share-nodes" style={{ color: "#3b5998" }}></i>
-                    Sosyal Medya & Arama
+                    Sosyal Medya İkonları
                   </h3>
 
                   <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
@@ -401,7 +423,7 @@ export default function MobileSettingsPage() {
                       <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                         <input
                           type="checkbox"
-                          checked={settings.mobileSocialShow}
+                          checked={settings.mobileSocialShow ?? true}
                           onChange={(e) => setSettings({ ...settings, mobileSocialShow: e.target.checked })}
                           style={{ width: 18, height: 18 }}
                         />
@@ -410,61 +432,94 @@ export default function MobileSettingsPage() {
                     </div>
 
                     <div className="form-group">
-                      <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
-                        <input
-                          type="checkbox"
-                          checked={settings.mobileSearchShow}
-                          onChange={(e) => setSettings({ ...settings, mobileSearchShow: e.target.checked })}
-                          style={{ width: 18, height: 18 }}
-                        />
-                        <span>Arama barını göster</span>
-                      </label>
+                      <label className="form-label">İkon Konumu</label>
+                      <select
+                        className="form-select"
+                        value={settings.mobileSocialPosition ?? "left"}
+                        onChange={(e) => setSettings({ ...settings, mobileSocialPosition: e.target.value as "left" | "right" })}
+                      >
+                        <option value="left">Sol Tarafta</option>
+                        <option value="right">Sağ Tarafta</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="form-group">
-                    <label className="form-label">Sosyal İkon Boyutu (px)</label>
-                    <input
-                      type="number"
-                      className="form-input"
-                      min={14}
-                      max={50}
-                      value={settings.mobileSocialSize}
-                      onChange={(e) => setSettings({ ...settings, mobileSocialSize: Number(e.target.value) })}
-                    />
-                    <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 18-28px</small>
+                  <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 12 }}>
+                    <div className="form-group">
+                      <label className="form-label">İkon Boyutu (px)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={14}
+                        max={50}
+                        value={settings.mobileSocialSize ?? defaultMobileSettings.mobileSocialSize}
+                        onChange={(e) => setSettings({ ...settings, mobileSocialSize: Number(e.target.value) })}
+                      />
+                      <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 18-28px (Küçültmek için düşük değer girin)</small>
+                    </div>
+
+                    <div className="form-group">
+                      <label className="form-label">İkonlar Arası Boşluk (px)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={0}
+                        max={20}
+                        value={settings.mobileSocialGap ?? defaultMobileSettings.mobileSocialGap}
+                        onChange={(e) => setSettings({ ...settings, mobileSocialGap: Number(e.target.value) })}
+                      />
+                      <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 2-6px</small>
+                    </div>
                   </div>
 
-                  <div style={{ borderTop: "1px solid #e5e7eb", paddingTop: 16, marginTop: 16 }}>
-                    <h4 style={{ margin: "0 0 12px", fontSize: 13, fontWeight: 600, color: "#374151" }}>
-                      <i className="fa-solid fa-magnifying-glass" style={{ marginRight: 8, color: "#9333ea" }}></i>
-                      Arama Barı Ayarları
-                    </h4>
-                    <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
-                      <div className="form-group">
-                        <label className="form-label">Genişlik (px)</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          min={30}
-                          max={120}
-                          value={settings.mobileSearchWidth}
-                          onChange={(e) => setSettings({ ...settings, mobileSearchWidth: Number(e.target.value) })}
-                        />
-                        <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 35-60px</small>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Yükseklik (px)</label>
-                        <input
-                          type="number"
-                          className="form-input"
-                          min={20}
-                          max={40}
-                          value={settings.mobileSearchHeight}
-                          onChange={(e) => setSettings({ ...settings, mobileSearchHeight: Number(e.target.value) })}
-                        />
-                        <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 22-28px</small>
-                      </div>
+                  <div style={{ marginTop: 12, padding: 12, background: "#fef3c7", borderRadius: 8, fontSize: 12 }}>
+                    <i className="fa-solid fa-lightbulb" style={{ color: "#d97706" }}></i>
+                    <strong> İpucu:</strong> İkonlar logo ile çakışıyorsa, ikon boyutunu küçültün veya konumunu değiştirin.
+                  </div>
+                </div>
+
+                <div className="admin-card">
+                  <h3 style={{ margin: "0 0 16px", display: "flex", alignItems: "center", gap: 8 }}>
+                    <i className="fa-solid fa-magnifying-glass" style={{ color: "#9333ea" }}></i>
+                    Arama Barı Ayarları
+                  </h3>
+
+                  <div className="form-group">
+                    <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
+                      <input
+                        type="checkbox"
+                        checked={settings.mobileSearchShow ?? true}
+                        onChange={(e) => setSettings({ ...settings, mobileSearchShow: e.target.checked })}
+                        style={{ width: 18, height: 18 }}
+                      />
+                      <span>Arama barını göster</span>
+                    </label>
+                  </div>
+
+                  <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 12 }}>
+                    <div className="form-group">
+                      <label className="form-label">Genişlik (px)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={30}
+                        max={120}
+                        value={settings.mobileSearchWidth ?? defaultMobileSettings.mobileSearchWidth}
+                        onChange={(e) => setSettings({ ...settings, mobileSearchWidth: Number(e.target.value) })}
+                      />
+                      <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 35-60px</small>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Yükseklik (px)</label>
+                      <input
+                        type="number"
+                        className="form-input"
+                        min={20}
+                        max={40}
+                        value={settings.mobileSearchHeight ?? defaultMobileSettings.mobileSearchHeight}
+                        onChange={(e) => setSettings({ ...settings, mobileSearchHeight: Number(e.target.value) })}
+                      />
+                      <small style={{ fontSize: 10, color: "#666" }}>Önerilen: 22-28px</small>
                     </div>
                   </div>
                 </div>
@@ -497,7 +552,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileBannerHeight}
+                      value={settings.mobileBannerHeight ?? defaultMobileSettings.mobileBannerHeight}
                       onChange={(e) => setSettings({ ...settings, mobileBannerHeight: Number(e.target.value) })}
                       min={60}
                       max={300}
@@ -509,7 +564,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileBannerBorderRadius}
+                      value={settings.mobileBannerBorderRadius ?? defaultMobileSettings.mobileBannerBorderRadius}
                       onChange={(e) => setSettings({ ...settings, mobileBannerBorderRadius: Number(e.target.value) })}
                       min={0}
                       max={30}
@@ -589,7 +644,7 @@ export default function MobileSettingsPage() {
                     <label className="form-label">Buton Hizalama</label>
                     <select
                       className="form-select"
-                      value={settings.mobileBranchAlign}
+                      value={settings.mobileBranchAlign ?? "stretch"}
                       onChange={(e) => setSettings({ ...settings, mobileBranchAlign: e.target.value as MobileSettings["mobileBranchAlign"] })}
                     >
                       <option value="stretch">Eşit Genişlik (Stretch)</option>
@@ -606,7 +661,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileBranchGap}
+                      value={settings.mobileBranchGap ?? defaultMobileSettings.mobileBranchGap}
                       onChange={(e) => setSettings({ ...settings, mobileBranchGap: Number(e.target.value) })}
                       min={2}
                       max={20}
@@ -618,7 +673,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileBranchSize}
+                      value={settings.mobileBranchSize ?? defaultMobileSettings.mobileBranchSize}
                       onChange={(e) => setSettings({ ...settings, mobileBranchSize: Number(e.target.value) })}
                       min={60}
                       max={150}
@@ -631,7 +686,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileBranchBorderRadius}
+                      value={settings.mobileBranchBorderRadius ?? defaultMobileSettings.mobileBranchBorderRadius}
                       onChange={(e) => setSettings({ ...settings, mobileBranchBorderRadius: Number(e.target.value) })}
                       min={0}
                       max={30}
@@ -660,9 +715,9 @@ export default function MobileSettingsPage() {
                           style={{
                             flex: 1,
                             padding: "12px",
-                            border: settings.mobileActionColumns === num ? "2px solid #e74c3c" : "1px solid #ddd",
+                            border: (settings.mobileActionColumns ?? 2) === num ? "2px solid #e74c3c" : "1px solid #ddd",
                             borderRadius: 8,
-                            background: settings.mobileActionColumns === num ? "#fce4ec" : "#fff",
+                            background: (settings.mobileActionColumns ?? 2) === num ? "#fce4ec" : "#fff",
                             cursor: "pointer",
                             fontWeight: 600,
                             fontSize: 16,
@@ -675,11 +730,46 @@ export default function MobileSettingsPage() {
                   </div>
 
                   <div className="form-group">
+                    <label className="form-label">Buton Hizalama</label>
+                    <select
+                      className="form-select"
+                      value={settings.mobileActionAlign ?? "stretch"}
+                      onChange={(e) => setSettings({ ...settings, mobileActionAlign: e.target.value as MobileSettings["mobileActionAlign"] })}
+                    >
+                      <option value="stretch">Tam Genişlik (Stretch)</option>
+                      <option value="center">Ortaya</option>
+                      <option value="left">Sola</option>
+                      <option value="right">Sağa</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="form-row" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16, marginTop: 16 }}>
+                  <div className="form-group">
+                    <label className="form-label">Buton Genişliği (%)</label>
+                    <input
+                      type="number"
+                      className="form-input"
+                      value={(settings.mobileActionAlign ?? "stretch") === "stretch" ? 100 : (settings.mobileActionWidth ?? 80)}
+                      onChange={(e) => setSettings({ ...settings, mobileActionWidth: Number(e.target.value) })}
+                      min={50}
+                      max={100}
+                      disabled={(settings.mobileActionAlign ?? "stretch") === "stretch"}
+                      style={{ opacity: (settings.mobileActionAlign ?? "stretch") === "stretch" ? 0.5 : 1 }}
+                    />
+                    <small style={{ fontSize: 10, color: "#666" }}>
+                      {(settings.mobileActionAlign ?? "stretch") === "stretch" 
+                        ? "Tam genişlikte sabit" 
+                        : "Ortaya/sola/sağa hizalama için genişlik"}
+                    </small>
+                  </div>
+
+                  <div className="form-group">
                     <label className="form-label">Buton Aralığı (px)</label>
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileActionGap}
+                      value={settings.mobileActionGap ?? defaultMobileSettings.mobileActionGap}
                       onChange={(e) => setSettings({ ...settings, mobileActionGap: Number(e.target.value) })}
                       min={2}
                       max={20}
@@ -693,7 +783,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileActionHeight}
+                      value={settings.mobileActionHeight ?? defaultMobileSettings.mobileActionHeight}
                       onChange={(e) => setSettings({ ...settings, mobileActionHeight: Number(e.target.value) })}
                       min={30}
                       max={80}
@@ -705,7 +795,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileActionFontSize}
+                      value={settings.mobileActionFontSize ?? defaultMobileSettings.mobileActionFontSize}
                       onChange={(e) => setSettings({ ...settings, mobileActionFontSize: Number(e.target.value) })}
                       min={8}
                       max={16}
@@ -717,12 +807,17 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileActionBorderRadius}
+                      value={settings.mobileActionBorderRadius ?? defaultMobileSettings.mobileActionBorderRadius}
                       onChange={(e) => setSettings({ ...settings, mobileActionBorderRadius: Number(e.target.value) })}
                       min={0}
                       max={20}
                     />
                   </div>
+                </div>
+
+                <div style={{ marginTop: 16, padding: 12, background: "#e3f2fd", borderRadius: 8, fontSize: 12 }}>
+                  <i className="fa-solid fa-info-circle" style={{ color: "#1976d2" }}></i>
+                  <strong> Not:</strong> Yazıların taşmaması için font boyutunu küçültün veya buton yüksekliğini artırın. Butonlar otomatik olarak yazıyı keser (overflow hidden).
                 </div>
               </div>
             )}
@@ -746,9 +841,9 @@ export default function MobileSettingsPage() {
                           style={{
                             flex: 1,
                             padding: "12px",
-                            border: settings.mobileListingColumns === num ? "2px solid #3498db" : "1px solid #ddd",
+                            border: (settings.mobileListingColumns ?? 2) === num ? "2px solid #3498db" : "1px solid #ddd",
                             borderRadius: 8,
-                            background: settings.mobileListingColumns === num ? "#e3f2fd" : "#fff",
+                            background: (settings.mobileListingColumns ?? 2) === num ? "#e3f2fd" : "#fff",
                             cursor: "pointer",
                             fontWeight: 600,
                             fontSize: 16,
@@ -765,7 +860,7 @@ export default function MobileSettingsPage() {
                     <input
                       type="number"
                       className="form-input"
-                      value={settings.mobileListingGap}
+                      value={settings.mobileListingGap ?? defaultMobileSettings.mobileListingGap}
                       onChange={(e) => setSettings({ ...settings, mobileListingGap: Number(e.target.value) })}
                       min={4}
                       max={20}
@@ -865,27 +960,36 @@ export default function MobileSettingsPage() {
                     <div
                       style={{
                         background: "#ffffff",
-                        padding: settings.mobileLogoRowPadding,
+                        padding: settings.mobileLogoRowPadding ?? "18px 12px",
                         display: "flex",
                         alignItems: "center",
-                        justifyContent: settings.mobileLogoAlign === "center" ? "center" : settings.mobileLogoAlign === "left" ? "flex-start" : "flex-end",
+                        justifyContent: (settings.mobileLogoAlign ?? "center") === "center" ? "center" : (settings.mobileLogoAlign ?? "center") === "left" ? "flex-start" : "flex-end",
                         gap: 12,
+                        position: "relative",
                       }}
                     >
-                      {settings.mobileSocialShow && settings.mobileLogoAlign !== "left" && (
-                        <div style={{ display: "flex", gap: 3, position: settings.mobileLogoAlign === "center" ? "absolute" : "relative", left: settings.mobileLogoAlign === "center" ? 10 : "auto" }}>
+                      {(settings.mobileSocialShow ?? true) && (
+                        <div 
+                          style={{ 
+                            display: "flex", 
+                            gap: settings.mobileSocialGap ?? 4, 
+                            position: "absolute", 
+                            left: (settings.mobileSocialPosition ?? "left") === "left" ? 10 : "auto",
+                            right: (settings.mobileSocialPosition ?? "left") === "right" ? 10 : "auto",
+                          }}
+                        >
                           {["f", "ig", "yt"].map((icon, i) => (
                             <div
                               key={i}
                               style={{
-                                width: settings.mobileSocialSize,
-                                height: settings.mobileSocialSize,
+                                width: settings.mobileSocialSize ?? 22,
+                                height: settings.mobileSocialSize ?? 22,
                                 background: "rgba(10,78,163,0.1)",
                                 borderRadius: 4,
                                 display: "flex",
                                 alignItems: "center",
                                 justifyContent: "center",
-                                fontSize: settings.mobileSocialSize * 0.4,
+                                fontSize: (settings.mobileSocialSize ?? 22) * 0.4,
                                 color: "#0a4ea3",
                               }}
                             >
@@ -897,8 +1001,8 @@ export default function MobileSettingsPage() {
                       <div style={{ textAlign: "center" }}>
                         <div
                           style={{
-                            height: settings.mobileLogoHeight,
-                            width: settings.mobileLogoHeight * 2.5,
+                            height: settings.mobileLogoHeight ?? 28,
+                            width: (settings.mobileLogoHeight ?? 28) * 2.5,
                             background: "#0a4ea3",
                             borderRadius: 4,
                             margin: "0 auto",
@@ -912,25 +1016,26 @@ export default function MobileSettingsPage() {
                         >
                           LOGO
                         </div>
-                        <div style={{ color: "#333", fontSize: settings.mobileLogoSubSize, marginTop: 2 }}>
+                        <div style={{ color: "#333", fontSize: settings.mobileLogoSubSize ?? 9, marginTop: 2 }}>
                           Özcan AKTAŞ
                         </div>
                       </div>
-                      {settings.mobileSearchShow && settings.mobileLogoAlign !== "right" && (
+                      {(settings.mobileSearchShow ?? true) && (
                         <div
                           style={{
-                            position: settings.mobileLogoAlign === "center" ? "absolute" : "relative",
-                            right: settings.mobileLogoAlign === "center" ? 10 : "auto",
+                            position: "absolute",
+                            right: (settings.mobileSocialPosition ?? "left") === "left" ? 10 : "auto",
+                            left: (settings.mobileSocialPosition ?? "left") === "right" ? 10 : "auto",
                             display: "flex",
                             alignItems: "center",
                             background: "rgba(10,78,163,0.1)",
                             borderRadius: 4,
-                            height: settings.mobileSearchHeight,
-                            minWidth: settings.mobileSearchWidth,
+                            height: settings.mobileSearchHeight ?? 24,
+                            minWidth: settings.mobileSearchWidth ?? 40,
                             padding: "0 6px",
                           }}
                         >
-                          <span style={{ fontSize: Math.min(settings.mobileSearchHeight * 0.5, 10), color: "#0a4ea3" }}>🔍</span>
+                          <span style={{ fontSize: Math.min((settings.mobileSearchHeight ?? 24) * 0.5, 10), color: "#0a4ea3" }}>🔍</span>
                         </div>
                       )}
                     </div>
@@ -994,9 +1099,17 @@ export default function MobileSettingsPage() {
                     <div style={{ padding: "12px 8px" }}>
                       <div
                         style={{
-                          display: "grid",
-                          gridTemplateColumns: `repeat(${settings.mobileActionColumns}, 1fr)`,
-                          gap: settings.mobileActionGap,
+                          display: "flex",
+                          flexDirection: (settings.mobileActionColumns ?? 2) === 1 ? "column" : "row",
+                          flexWrap: "wrap",
+                          alignItems: (settings.mobileActionAlign ?? "stretch") === "stretch" 
+                            ? "stretch" 
+                            : (settings.mobileActionAlign ?? "stretch") === "left" 
+                              ? "flex-start" 
+                              : (settings.mobileActionAlign ?? "stretch") === "right" 
+                                ? "flex-end" 
+                                : "center",
+                          gap: settings.mobileActionGap ?? 6,
                         }}
                       >
                         {[
@@ -1009,15 +1122,22 @@ export default function MobileSettingsPage() {
                             style={{
                               background: btn.bg,
                               color: "#fff",
-                              height: settings.mobileActionHeight,
-                              borderRadius: settings.mobileActionBorderRadius,
+                              width: (settings.mobileActionAlign ?? "stretch") === "stretch" 
+                                ? "100%" 
+                                : `${settings.mobileActionWidth ?? 80}%`,
+                              height: settings.mobileActionHeight ?? 40,
+                              borderRadius: settings.mobileActionBorderRadius ?? 6,
                               display: "flex",
                               alignItems: "center",
                               justifyContent: "center",
-                              fontSize: settings.mobileActionFontSize,
+                              fontSize: settings.mobileActionFontSize ?? 10,
                               fontWeight: 600,
-                              padding: "0 4px",
+                              padding: "0 8px",
                               textAlign: "center",
+                              overflow: "hidden",
+                              textOverflow: "ellipsis",
+                              whiteSpace: "nowrap",
+                              boxSizing: "border-box",
                             }}
                           >
                             {btn.label}

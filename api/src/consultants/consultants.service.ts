@@ -82,11 +82,12 @@ export class ConsultantsService {
     return this.prisma.consultant.update({
       where: { id },
       data: {
-        branchId: data.branchId ?? undefined,
+        branchId: data.branchId && data.branchId.trim() !== '' ? data.branchId : undefined,
         title: data.title ?? undefined,
         whatsappNumber: data.whatsappNumber ?? undefined,
         contactPhone: data.contactPhone ?? undefined,
         bio: data.bio ?? undefined,
+        photoUrl: data.photoUrl ?? undefined,
       },
       include: { user: true, branch: true },
     });

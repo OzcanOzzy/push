@@ -4,6 +4,7 @@ import Link from "next/link";
 import dynamic from "next/dynamic";
 import { useEffect, useState } from "react";
 import { useSettings } from "./components/SettingsProvider";
+import { getListingFeatures } from "../lib/listings";
 
 // Dynamic import for map to avoid SSR issues
 const ListingsMap = dynamic(() => import("./components/ListingsMap"), {
@@ -64,8 +65,27 @@ type ActionButton = {
 type Listing = {
   id: string;
   title: string;
+  listingNo?: string | null;
   status: "FOR_SALE" | "FOR_RENT";
   category: string;
+  subPropertyType?: string | null;
+  roomCount?: string | number | null;
+  floor?: string | number | null;
+  totalFloors?: string | number | null;
+  buildingAge?: string | number | null;
+  facade?: string | null;
+  hasGarage?: boolean | string | null;
+  hasParentBathroom?: boolean | string | null;
+  hasElevator?: boolean | string | null;
+  isSiteInside?: boolean | string | null;
+  furnished?: string | null;
+  parkingType?: string | null;
+  isSwapEligible?: boolean | string | null;
+  shareStatus?: string | null;
+  waterType?: string | null;
+  hasElectricity?: boolean | string | null;
+  hasRoadAccess?: boolean | string | null;
+  hasHouse?: boolean | string | null;
   price?: number | string | null;
   currency?: string;
   areaGross?: number | string | null;
@@ -110,17 +130,17 @@ export default function Home() {
     }).catch(() => {});
   }, []);
 
-  const heroImage = settings.heroBackgroundUrl || banners[0]?.imageUrl || "";
+  const heroImageRaw = settings.heroBackgroundUrl || banners[0]?.imageUrl || "";
 
-  // Default action buttons - always show these plus any from API
+  // Action buttons - API'den gelenler kullanılır, yoksa varsayılanlar gösterilir
   const defaultActions: ActionButton[] = [
-    { id: "default-1", name: "SATMAK İSTİYORUM", linkUrl: "/requests/customer?type=SELL", bgColor: "#f97316", icon: "fa-solid fa-house" },
-    { id: "default-2", name: "EVİM NE KADAR EDER?", linkUrl: "/requests/customer?type=VALUATION", bgColor: "#0a4ea3", icon: "fa-solid fa-calculator" },
+    { id: "default-1", name: "SATMAK İSTİYORUM", linkUrl: "/satilik-kiralik-talep?type=SELL", bgColor: "#f97316", icon: "fa-solid fa-house" },
+    { id: "default-2", name: "EVİM NE KADAR EDER?", linkUrl: "/evim-ne-kadar-eder", bgColor: "#0a4ea3", icon: "fa-solid fa-calculator" },
     { id: "default-3", name: "DEĞER ARTIŞ VERGİSİ", linkUrl: "https://ivd.gib.gov.tr/", bgColor: "#2f9e44", icon: "fa-solid fa-receipt" },
   ];
 
-  // Combine default actions with API actions
-  const actions = [...defaultActions, ...actionButtons];
+  // API'den buton varsa sadece onları göster, yoksa varsayılanları göster
+  const actions = actionButtons.length > 0 ? actionButtons : defaultActions;
 
   // Get cover image for a listing (production'da API URL ile)
   const getCoverImage = (listing: Listing) => {
@@ -142,20 +162,6 @@ export default function Home() {
     return parts.join(" / ") || "Türkiye";
   };
 
-  // Get listing features as icons
-  const getListingFeatures = (listing: Listing) => {
-    const attrs = listing.attributes as Record<string, unknown> || {};
-    const features = [];
-    
-    if (attrs.roomCount) features.push({ icon: "fa-solid fa-door-open", value: `${attrs.roomCount} Oda` });
-    if (attrs.bathroomCount) features.push({ icon: "fa-solid fa-bath", value: `${attrs.bathroomCount} Banyo` });
-    if (listing.areaGross) features.push({ icon: "fa-solid fa-ruler-combined", value: `${listing.areaGross} m²` });
-    if (attrs.floorNumber) features.push({ icon: "fa-solid fa-building", value: `${attrs.floorNumber}. Kat` });
-    if (attrs.buildingAge) features.push({ icon: "fa-solid fa-calendar", value: `${attrs.buildingAge} Yaşında` });
-    if (attrs.heatingType) features.push({ icon: "fa-solid fa-fire", value: String(attrs.heatingType) });
-    
-    return features.slice(0, 6);
-  };
 
   // Resolve image URL (handle relative paths)
   const resolveImageUrl = (url?: string | null) => {
@@ -166,6 +172,24 @@ export default function Home() {
     if (url.startsWith("/")) return url;
     return `${API_BASE_URL}/${url}`;
   };
+
+  // Hero image resolved
+  const heroImage = resolveImageUrl(heroImageRaw) || "";
+  
+  // Profil resmi URL
+  const profileImageUrl = resolveImageUrl(settings.profileImageUrl);
+  
+  // Debug log - detaylı
+  if (typeof window !== "undefined") {
+    console.log("=== ANA SAYFA DEBUG ===");
+    console.log("Hero BG URL:", settings.heroBackgroundUrl);
+    console.log("Profile Image URL:", settings.profileImageUrl);
+    console.log("Banners count:", banners.length);
+    console.log("Resolved hero:", heroImage);
+    console.log("Resolved profile:", profileImageUrl);
+    console.log("City buttons:", cityButtons.length);
+    console.log("======================");
+  }
 
   // Build main background style with opacity
   const mainBgStyle: React.CSSProperties = {};
@@ -222,8 +246,10 @@ export default function Home() {
   return (
     <div className="page home-page" style={mainBgStyle}>
       <section className="hero">
-        {/* Banner - just background image, no fixed content */}
-        <div className="banner" style={bannerStyle} />
+        {/* Banner with content */}
+        <div className="banner" style={bannerStyle}>
+          {/* Banner sadece arka plan resmi gösterir - içerik yok */}
+        </div>
       </section>
 
       {/* Section Title - Centered below banner */}
@@ -249,7 +275,7 @@ export default function Home() {
           {cityButtons.map((btn) => (
             <Link
               key={btn.id}
-              href={`/${btn.slug}`}
+              href={`/subeler/${btn.slug}`}
               className="branch-btn"
               aria-label={`${btn.name} ilanlarını görüntüle`}
               style={isMobile ? undefined : {
@@ -371,12 +397,13 @@ export default function Home() {
             {recentListings.map((listing) => (
               <Link key={listing.id} href={`/listings/${listing.id}`} className="listing-card">
                 <div className="listing-image" style={{ backgroundImage: `url('${getCoverImage(listing)}')` }}>
-                  {/* Status Badge */}
-                  <span className={`listing-status ${listing.status === "FOR_SALE" ? "for-sale" : "for-rent"}`}>
-                    {listing.status === "FOR_SALE" ? "Satılık" : "Kiralık"}
-                  </span>
-                  {/* Opportunity Badge */}
-                  {listing.isOpportunity && <span className="listing-opportunity">Fırsat</span>}
+                  <div className="listing-labels-top">
+                    <span className={`listing-status ${listing.status === "FOR_SALE" ? "for-sale" : "for-rent"}`}>
+                      {listing.status === "FOR_SALE" ? "Satılık" : "Kiralık"}
+                    </span>
+                    {listing.isOpportunity && <span className="listing-opportunity">Fırsat</span>}
+                  </div>
+                  {listing.listingNo && <span className="listing-no">#{listing.listingNo}</span>}
                 </div>
                 <div className="listing-info">
                   {/* Price - moved below image */}
@@ -387,9 +414,9 @@ export default function Home() {
                     {getLocationText(listing)}
                   </p>
                   <div className="listing-features">
-                    {getListingFeatures(listing).map((feat, idx) => (
-                      <div key={idx} className="listing-feature">
-                        <i className={feat.icon}></i>
+                    {getListingFeatures(listing).map((feat, fidx) => (
+                      <div key={fidx} className="listing-feature" title={feat.title}>
+                        <i className={`fa-solid ${feat.icon}`}></i>
                         <span>{feat.value}</span>
                       </div>
                     ))}

@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import SettingsProvider from "./components/SettingsProvider";
 import CorporateHeader from "./components/CorporateHeader";
@@ -20,20 +20,37 @@ const geistMono = Geist_Mono({
 async function getSettings(): Promise<SiteSettings & Record<string, unknown>> {
   try {
     const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
+    // Kısa timeout ile fetch - Next.js server-side fetch için
     const res = await fetch(`${API_URL}/settings`, { 
-      next: { revalidate: 60 }
+      next: { revalidate: 60 },
+      // Server-side fetch için timeout yok, ama hızlı fail için cache: 'no-store' kullanabiliriz
     });
+    
     if (!res.ok) return defaultSettings;
     const data = await res.json();
     return { ...defaultSettings, ...data };
   } catch (error) {
+    // Backend'e bağlanılamazsa default settings döndür (sayfa yine de render edilir)
+    // Bu normal bir durum - backend henüz başlamamış olabilir
     return defaultSettings;
   }
 }
 
+// Sadece viewport; themeColor head’te meta ile (uyarıyı önlemek için viewport’ta themeColor yok)
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+};
+
 // Dynamic metadata
 export async function generateMetadata(): Promise<Metadata> {
-  const settings = await getSettings();
+  let settings: SiteSettings & Record<string, unknown>;
+  try {
+    settings = await getSettings();
+  } catch {
+    settings = defaultSettings;
+  }
   
   return {
     title: settings.metaTitle || `${settings.siteName || "Emlaknomi"} - ${settings.ownerName || "Gayrimenkul"}`,
@@ -42,13 +59,6 @@ export async function generateMetadata(): Promise<Metadata> {
     authors: [{ name: settings.ownerName || "Emlaknomi" }],
     creator: settings.ownerName || "Emlaknomi",
     publisher: settings.siteName || "Emlaknomi",
-    viewport: {
-      width: "device-width",
-      initialScale: 1,
-      maximumScale: 5,
-      userScalable: true,
-    },
-    themeColor: settings.primaryColor || "#0a4ea3",
     robots: {
       index: true,
       follow: true,
@@ -85,6 +95,11 @@ export async function generateMetadata(): Promise<Metadata> {
       yandex: settings.yandexVerification || undefined,
       other: settings.bingSiteVerification ? { "msvalidate.01": settings.bingSiteVerification } : undefined,
     },
+    icons: settings.faviconUrl ? {
+      icon: settings.faviconUrl,
+      shortcut: settings.faviconUrl,
+      apple: settings.faviconUrl,
+    } : undefined,
   };
 }
 
@@ -93,7 +108,13 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const initialSettings = await getSettings();
+  // Veritabanındaki (PostgreSQL) tasarım ayarlarını API'den al; hata olursa varsayılan
+  let initialSettings: SiteSettings & Record<string, unknown>;
+  try {
+    initialSettings = await getSettings();
+  } catch {
+    initialSettings = defaultSettings;
+  }
 
   // Build Schema.org JSON-LD
   const schemaOrgJsonLd = {
@@ -128,13 +149,12 @@ export default async function RootLayout({
   return (
     <html lang="tr">
       <head>
-        {/* Mobile Optimization */}
-        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=5, user-scalable=yes" />
+        {/* Dinamik theme-color (API’den); viewport statik export ile geliyor */}
+        <meta name="theme-color" content={typeof initialSettings.primaryColor === "string" ? (initialSettings.primaryColor.trim() || "#0a4ea3") : "#0a4ea3"} />
         <meta name="format-detection" content="telephone=no" />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-        <meta name="theme-color" content="#0a4ea3" />
         
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

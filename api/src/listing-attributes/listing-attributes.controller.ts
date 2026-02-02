@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
-import { ListingCategory, Role } from '@prisma/client';
+import { ListingCategory, ListingStatus, Role } from '@prisma/client';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../shared/decorators/roles.decorator';
@@ -12,8 +12,12 @@ export class ListingAttributesController {
   constructor(private readonly listingAttributesService: ListingAttributesService) {}
 
   @Get()
-  findAll(@Query('category') category?: ListingCategory) {
-    return this.listingAttributesService.findAll(category);
+  findAll(
+    @Query('status') status?: ListingStatus,
+    @Query('category') category?: ListingCategory,
+    @Query('subPropertyType') subPropertyType?: string,
+  ) {
+    return this.listingAttributesService.findAll({ status, category, subPropertyType });
   }
 
   @Post()

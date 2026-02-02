@@ -30,6 +30,18 @@ interface BackupResult {
   };
 }
 
+interface CompleteBackupResult {
+  success: boolean;
+  message: string;
+  data: {
+    timestamp: string;
+    zipName: string;
+    totalSize: string;
+    errors: string[];
+    downloadUrl: string;
+  };
+}
+
 export default function AdminBackupPage() {
   const [isReady, setIsReady] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
@@ -37,7 +49,10 @@ export default function AdminBackupPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState({ type: "", text: "" });
   const [isCreating, setIsCreating] = useState(false);
+  const [isCreatingComplete, setIsCreatingComplete] = useState(false);
   const [progress, setProgress] = useState<string[]>([]);
+  const [completeBackupUrl, setCompleteBackupUrl] = useState<string | null>(null);
+  const [completeBackupName, setCompleteBackupName] = useState<string | null>(null);
 
   // Seçici yedekleme seçenekleri
   const [options, setOptions] = useState({
@@ -114,6 +129,87 @@ export default function AdminBackupPage() {
     } finally {
       setIsCreating(false);
       setTimeout(() => setProgress([]), 3000);
+    }
+  };
+
+  // A'dan Z'ye Tam Yedekleme - Tek ZIP
+  const createCompleteBackup = async () => {
+    setIsCreatingComplete(true);
+    setProgress(["A'dan Z'ye tam yedekleme başlatılıyor..."]);
+    setMessage({ type: "", text: "" });
+    setCompleteBackupUrl(null);
+    setCompleteBackupName(null);
+
+    try {
+      setProgress((p) => [...p, "Kaynak kodlar, database, uploads, ayarlar ve geri yükleme rehberi hazırlanıyor..."]);
+      
+      const res = await fetch(`${API_BASE_URL}/admin/backup/complete`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          "Content-Type": "application/json",
+        },
+      });
+
+      const result: CompleteBackupResult = await res.json();
+
+      if (result.success) {
+        setProgress((p) => [...p, "✅ Tam yedekleme tamamlandı!"]);
+        setMessage({
+          type: "success",
+          text: `${result.message} - Boyut: ${result.data.totalSize}`,
+        });
+        setCompleteBackupUrl(result.data.downloadUrl);
+        setCompleteBackupName(result.data.zipName);
+        loadBackups();
+      } else {
+        setProgress((p) => [...p, "⚠️ Yedekleme kısmen başarılı"]);
+        setMessage({
+          type: "warning",
+          text: `${result.message}${result.data.errors.length > 0 ? `: ${result.data.errors.join(", ")}` : ""}`,
+        });
+        if (result.data.downloadUrl) {
+          setCompleteBackupUrl(result.data.downloadUrl);
+          setCompleteBackupName(result.data.zipName);
+        }
+      }
+    } catch (error) {
+      setProgress((p) => [...p, "❌ Hata oluştu"]);
+      setMessage({ type: "error", text: "Tam yedekleme sırasında bir hata oluştu" });
+    } finally {
+      setIsCreatingComplete(false);
+      setTimeout(() => setProgress([]), 5000);
+    }
+  };
+
+  // Tam yedeği indir
+  const downloadCompleteBackup = async () => {
+    if (!completeBackupName) return;
+    
+    try {
+      const url = `${API_BASE_URL}/admin/backup/download-complete/${completeBackupName}`;
+      const response = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+        },
+      });
+
+      if (!response.ok) {
+        setMessage({ type: "error", text: "Dosya indirilemedi" });
+        return;
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      link.download = completeBackupName;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      setMessage({ type: "error", text: "İndirme sırasında bir hata oluştu" });
     }
   };
 
@@ -314,7 +410,111 @@ export default function AdminBackupPage() {
           </div>
         )}
 
-        {/* Tam Yedekleme Kartı */}
+        {/* A'DAN Z'YE TAM YEDEKLEME - ÖNERİLEN */}
+        <div
+          className="admin-card"
+          style={{
+            marginBottom: 24,
+            background: "linear-gradient(135deg, #16a34a 0%, #15803d 100%)",
+            color: "#fff",
+            border: "3px solid #22c55e",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
+            <div style={{ flex: 1 }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 8 }}>
+                <span style={{ 
+                  background: "#fff", 
+                  color: "#16a34a", 
+                  padding: "4px 12px", 
+                  borderRadius: 20, 
+                  fontSize: 12, 
+                  fontWeight: 700 
+                }}>
+                  ÖNERİLEN
+                </span>
+              </div>
+              <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 12, fontSize: 22 }}>
+                <i className="fa-solid fa-box-archive"></i> A&apos;dan Z&apos;ye Tam Yedekleme
+              </h2>
+              <p style={{ margin: "12px 0 0", opacity: 0.95, fontSize: 15 }}>
+                Tüm proje tek ZIP dosyası olarak indirilir. Cursor&apos;a yükleyip direkt çalıştırabilirsiniz!
+              </p>
+              <div style={{ 
+                marginTop: 16, 
+                padding: 12, 
+                background: "rgba(255,255,255,0.15)", 
+                borderRadius: 8,
+                fontSize: 13 
+              }}>
+                <strong>İçerik:</strong> API + Web kaynak kodları, Database, Uploads, Site ayarları, 
+                .env dosyaları, Geri yükleme rehberi, Kurulum scriptleri (setup.sh / setup.bat)
+              </div>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <button
+                onClick={createCompleteBackup}
+                disabled={isCreatingComplete || isCreating}
+                className="btn"
+                style={{
+                  background: "#fff",
+                  color: "#16a34a",
+                  padding: "14px 28px",
+                  fontSize: 16,
+                  fontWeight: 700,
+                  opacity: (isCreatingComplete || isCreating) ? 0.7 : 1,
+                  minWidth: 200,
+                }}
+              >
+                {isCreatingComplete ? (
+                  <>
+                    <i className="fa-solid fa-spinner fa-spin"></i> Hazırlanıyor...
+                  </>
+                ) : (
+                  <>
+                    <i className="fa-solid fa-box-archive"></i> Tam Yedek Oluştur
+                  </>
+                )}
+              </button>
+              
+              {completeBackupUrl && (
+                <button
+                  onClick={downloadCompleteBackup}
+                  className="btn"
+                  style={{
+                    background: "#fef08a",
+                    color: "#854d0e",
+                    padding: "14px 28px",
+                    fontSize: 16,
+                    fontWeight: 700,
+                    minWidth: 200,
+                  }}
+                >
+                  <i className="fa-solid fa-download"></i> ZIP İndir
+                </button>
+              )}
+            </div>
+          </div>
+
+          {completeBackupName && (
+            <div style={{ 
+              marginTop: 16, 
+              padding: 12, 
+              background: "rgba(255,255,255,0.2)", 
+              borderRadius: 8,
+              display: "flex",
+              alignItems: "center",
+              gap: 12
+            }}>
+              <i className="fa-solid fa-check-circle" style={{ fontSize: 20 }}></i>
+              <span>
+                <strong>{completeBackupName}</strong> hazır! İndir butonuna tıklayarak bilgisayarınıza kaydedin.
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Parça Parça Tam Yedekleme Kartı */}
         <div
           className="admin-card"
           style={{
@@ -326,15 +526,15 @@ export default function AdminBackupPage() {
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 16 }}>
             <div>
               <h2 style={{ margin: 0, display: "flex", alignItems: "center", gap: 12 }}>
-                <i className="fa-solid fa-download"></i> Tam Yedekleme
+                <i className="fa-solid fa-download"></i> Parça Parça Yedekleme
               </h2>
               <p style={{ margin: "8px 0 0", opacity: 0.9 }}>
-                Kaynak kod, database, uploads ve tüm ayarları tek seferde yedekler
+                Kaynak kod, database, uploads ve ayarları ayrı ayrı dosyalar olarak yedekler
               </p>
             </div>
             <button
               onClick={createFullBackup}
-              disabled={isCreating}
+              disabled={isCreating || isCreatingComplete}
               className="btn"
               style={{
                 background: "#fff",
@@ -342,7 +542,7 @@ export default function AdminBackupPage() {
                 padding: "12px 24px",
                 fontSize: 16,
                 fontWeight: 600,
-                opacity: isCreating ? 0.7 : 1,
+                opacity: (isCreating || isCreatingComplete) ? 0.7 : 1,
               }}
             >
               {isCreating ? (
@@ -351,7 +551,7 @@ export default function AdminBackupPage() {
                 </>
               ) : (
                 <>
-                  <i className="fa-solid fa-shield-halved"></i> Tam Yedekle
+                  <i className="fa-solid fa-shield-halved"></i> Parça Parça Yedekle
                 </>
               )}
             </button>
@@ -643,19 +843,41 @@ export default function AdminBackupPage() {
           className="admin-card"
           style={{
             marginTop: 24,
+            background: "#f0fdf4",
+            border: "1px solid #86efac",
+          }}
+        >
+          <h3 style={{ margin: "0 0 12px", display: "flex", alignItems: "center", gap: 8, color: "#16a34a" }}>
+            <i className="fa-solid fa-circle-info"></i> A&apos;dan Z&apos;ye Tam Yedekleme Hakkında
+          </h3>
+          <ul style={{ margin: 0, paddingLeft: 20, color: "#166534", lineHeight: 1.8 }}>
+            <li><strong>Tek ZIP Dosyası:</strong> Tüm proje tek dosya olarak indirilir</li>
+            <li><strong>Cursor&apos;a Yükle, Çalıştır:</strong> ZIP&apos;i çıkartın, Cursor ile açın, setup scriptini çalıştırın</li>
+            <li><strong>.env Dahil:</strong> Ortam değişkenleri korunur (DATABASE_URL, API_URL vb.)</li>
+            <li><strong>Database Yedeği:</strong> Tüm veriler JSON formatında dahil</li>
+            <li><strong>Kurulum Scriptleri:</strong> Windows (setup.bat) ve Linux/Mac (setup.sh) için otomatik kurulum</li>
+            <li><strong>Geri Yükleme Rehberi:</strong> Adım adım kurulum talimatları dahil</li>
+          </ul>
+        </div>
+
+        {/* Ek Bilgi Kartı */}
+        <div
+          className="admin-card"
+          style={{
+            marginTop: 16,
             background: "#fff8e6",
             border: "1px solid #ffe0b2",
           }}
         >
           <h3 style={{ margin: "0 0 12px", display: "flex", alignItems: "center", gap: 8, color: "#e65100" }}>
-            <i className="fa-solid fa-lightbulb"></i> Yedekleme Hakkında
+            <i className="fa-solid fa-lightbulb"></i> Parça Parça Yedekleme Hakkında
           </h3>
           <ul style={{ margin: 0, paddingLeft: 20, color: "#666", lineHeight: 1.8 }}>
             <li><strong>Kaynak Kod:</strong> API ve Web kaynak kodlarını içerir (node_modules hariç)</li>
             <li><strong>Database:</strong> PostgreSQL veritabanının tam dökümü (SQL veya JSON formatında)</li>
             <li><strong>Uploads:</strong> Yüklenen tüm resim ve dosyalar</li>
             <li><strong>Ayarlar:</strong> Site ayarları JSON formatında</li>
-            <li><strong>Önerilen:</strong> Düzenli olarak tam yedekleme yapmanız tavsiye edilir</li>
+            <li><strong>Kullanım:</strong> Her dosyayı ayrı ayrı indirip geri yükleyebilirsiniz</li>
           </ul>
         </div>
       </div>

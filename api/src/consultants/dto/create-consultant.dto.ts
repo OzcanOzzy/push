@@ -30,4 +30,8 @@ export class CreateConsultantDto {
   @IsOptional()
   @IsString()
   bio?: string;
+
+  @IsOptional()
+  @IsString()
+  photoUrl?: string;
 }

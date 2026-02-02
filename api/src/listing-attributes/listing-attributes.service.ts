@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { ListingCategory } from '@prisma/client';
+import { ListingCategory, ListingStatus } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateListingAttributeDto } from './dto/create-listing-attribute.dto';
 import { UpdateListingAttributeDto } from './dto/update-listing-attribute.dto';
@@ -8,10 +8,35 @@ import { UpdateListingAttributeDto } from './dto/update-listing-attribute.dto';
 export class ListingAttributesService {
   constructor(private readonly prisma: PrismaService) {}
 
-  findAll(category?: ListingCategory) {
+  findAll(params: {
+    status?: ListingStatus;
+    category?: ListingCategory;
+    subPropertyType?: string;
+  }) {
+    const { status, category, subPropertyType } = params;
+    
+    // Filtreleme: status null veya eşleşen, category eşleşen, subPropertyType null veya eşleşen
     return this.prisma.listingAttributeDefinition.findMany({
-      where: category ? { category } : undefined,
-      orderBy: [{ category: 'asc' }, { sortOrder: 'asc' }],
+      where: {
+        ...(category ? { category } : {}),
+        AND: [
+          // Status: null (her iki durum için) veya eşleşen
+          {
+            OR: [
+              { status: null },
+              ...(status ? [{ status }] : []),
+            ],
+          },
+          // SubPropertyType: null (tüm tipler için) veya eşleşen
+          {
+            OR: [
+              { subPropertyType: null },
+              ...(subPropertyType ? [{ subPropertyType }] : []),
+            ],
+          },
+        ],
+      },
+      orderBy: [{ groupName: 'asc' }, { sortOrder: 'asc' }],
     });
   }
 

@@ -18,10 +18,14 @@ import { NeighborhoodsModule } from './neighborhoods/neighborhoods.module';
 import { PageDesignModule } from './page-design/page-design.module';
 import { PagesModule } from './pages/pages.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { PropertyRequestsModule } from './property-requests/property-requests.module';
 import { RequestsModule } from './requests/requests.module';
 import { RolesGuard } from './auth/guards/roles.guard';
 import { SettingsModule } from './settings/settings.module';
 import { SocialLinksModule } from './social-links/social-links.module';
+import { UsersModule } from './users/users.module';
+import { UtilsModule } from './utils/utils.module';
+import { ValuationRequestsModule } from './valuation-requests/valuation-requests.module';
 
 @Module({
   imports: [
@@ -44,9 +48,13 @@ import { SocialLinksModule } from './social-links/social-links.module';
     NeighborhoodsModule,
     PageDesignModule,
     PagesModule,
+    PropertyRequestsModule,
     RequestsModule,
     SettingsModule,
     SocialLinksModule,
+    UsersModule,
+    UtilsModule,
+    ValuationRequestsModule,
   ],
   providers: [RolesGuard],
 })

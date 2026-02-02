@@ -15,7 +15,7 @@ export default function AdminSettingsPage() {
   const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const profileInputRef = useRef<HTMLInputElement>(null);
+  const faviconInputRef = useRef<HTMLInputElement>(null);
   const heroInputRef = useRef<HTMLInputElement>(null);
   const headerBgInputRef = useRef<HTMLInputElement>(null);
   const footerBgInputRef = useRef<HTMLInputElement>(null);
@@ -219,35 +219,41 @@ export default function AdminSettingsPage() {
                 />
               </div>
 
-              {/* Profile Image Upload */}
+              {/* Favicon Upload */}
               <div style={{ border: "1px solid var(--color-border)", borderRadius: 8, padding: 16 }}>
-                <div style={{ fontWeight: 600, marginBottom: 8 }}>Profil Resmi</div>
-                {formState.profileImageUrl && (
+                <div style={{ fontWeight: 600, marginBottom: 8 }}>
+                  <i className="fa-solid fa-icons" style={{ marginRight: 8, color: "var(--color-primary)" }}></i>
+                  Favicon (Site İkonu)
+                </div>
+                <p style={{ fontSize: 12, color: "var(--color-muted)", marginBottom: 12 }}>
+                  Tarayıcı sekmesinde görünen küçük ikon. Önerilen boyut: 32x32 veya 64x64 piksel.
+                </p>
+                {formState.faviconUrl && (
                   <div style={{ marginBottom: 12, background: "#1a1a1a", padding: 12, borderRadius: 8, textAlign: "center" }}>
-                    <img src={formState.profileImageUrl} alt="Profil" style={{ maxHeight: 120, maxWidth: "100%" }} />
+                    <img src={formState.faviconUrl} alt="Favicon" style={{ maxHeight: 64, maxWidth: 64 }} />
                   </div>
                 )}
                 <input
                   type="file"
-                  ref={profileInputRef}
-                  accept="image/*"
+                  ref={faviconInputRef}
+                  accept="image/*,.ico"
                   style={{ display: "none" }}
-                  onChange={(e) => handleFileUpload(e, "profileImageUrl")}
+                  onChange={(e) => handleFileUpload(e, "faviconUrl")}
                 />
                 <button
                   type="button"
                   className="btn btn-outline"
                   style={{ width: "100%" }}
-                  onClick={() => profileInputRef.current?.click()}
-                  disabled={uploadingField === "profileImageUrl"}
+                  onClick={() => faviconInputRef.current?.click()}
+                  disabled={uploadingField === "faviconUrl"}
                 >
-                  {uploadingField === "profileImageUrl" ? "Yükleniyor..." : "Profil Resmi Yükle"}
+                  {uploadingField === "faviconUrl" ? "Yükleniyor..." : "Favicon Yükle"}
                 </button>
                 <input
                   className="search-input"
-                  placeholder="veya Profil Resmi URL girin"
-                  value={formState.profileImageUrl ?? ""}
-                  onChange={(event) => handleChange("profileImageUrl", event.target.value)}
+                  placeholder="veya Favicon URL girin"
+                  value={formState.faviconUrl ?? ""}
+                  onChange={(event) => handleChange("faviconUrl", event.target.value)}
                   style={{ marginTop: 8 }}
                 />
               </div>

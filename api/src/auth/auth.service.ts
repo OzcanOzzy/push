@@ -10,9 +10,29 @@ export class AuthService {
     private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string) {
-    const user = await this.prisma.user.findUnique({ where: { email } });
+  async validateUser(identifier: string, password: string) {
+    // Email veya username ile login yapabilir
+    const user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: identifier },
+        ],
+      },
+      include: {
+        consultant: {
+          include: {
+            branch: true,
+          },
+        },
+      },
+    });
+
     if (!user) {
+      return null;
+    }
+
+    if (!user.isActive) {
       return null;
     }
 
@@ -24,10 +44,10 @@ export class AuthService {
     return user;
   }
 
-  async login(email: string, password: string) {
-    const user = await this.validateUser(email, password);
+  async login(identifier: string, password: string) {
+    const user = await this.validateUser(identifier, password);
     if (!user) {
-      throw new UnauthorizedException('Invalid credentials');
+      throw new UnauthorizedException('Geçersiz kullanıcı adı/e-posta veya şifre');
     }
 
     const payload = { sub: user.id, role: user.role, email: user.email };
@@ -37,8 +57,34 @@ export class AuthService {
         id: user.id,
         name: user.name,
         email: user.email,
+        username: user.username,
         role: user.role,
+        photoUrl: user.photoUrl,
+        phone: user.phone,
+        whatsapp: user.whatsapp,
+        title: user.title,
+        consultantId: user.consultant?.id || null,
+        branchId: user.consultant?.branchId || null,
+        branchName: user.consultant?.branch?.name || null,
       },
     };
+  }
+
+  // Rol bazlı yetki kontrolleri
+  isAdmin(role: string): boolean {
+    return role === 'ADMIN';
+  }
+
+  isManager(role: string): boolean {
+    return ['ADMIN', 'BROKER', 'FIRM_OWNER', 'REAL_ESTATE_EXPERT'].includes(role);
+  }
+
+  isConsultant(role: string): boolean {
+    return ['CONSULTANT', 'BRANCH_MANAGER'].includes(role);
+  }
+
+  // Kullanıcının tüm ilanları görebilip göremeyeceği
+  canViewAllListings(role: string): boolean {
+    return this.isAdmin(role) || this.isManager(role);
   }
 }

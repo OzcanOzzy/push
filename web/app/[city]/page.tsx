@@ -8,6 +8,7 @@ import {
   formatPrice,
   getStatusLabel,
   resolveImageUrl,
+  getListingFeatures,
 } from "../../lib/listings";
 import { useSettings } from "../components/SettingsProvider";
 
@@ -16,9 +17,28 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 type Listing = {
   id: string;
   title: string;
+  listingNo?: string | null;
   price?: string | null;
   status?: string | null;
   category?: string | null;
+  subPropertyType?: string | null;
+  roomCount?: string | number | null;
+  floor?: string | number | null;
+  totalFloors?: string | number | null;
+  buildingAge?: string | number | null;
+  facade?: string | null;
+  hasGarage?: boolean | string | null;
+  hasParentBathroom?: boolean | string | null;
+  hasElevator?: boolean | string | null;
+  isSiteInside?: boolean | string | null;
+  furnished?: string | null;
+  parkingType?: string | null;
+  isSwapEligible?: boolean | string | null;
+  shareStatus?: string | null;
+  waterType?: string | null;
+  hasElectricity?: boolean | string | null;
+  hasRoadAccess?: boolean | string | null;
+  hasHouse?: boolean | string | null;
   city?: { name: string } | null;
   district?: { name: string } | null;
   neighborhood?: { name: string } | null;
@@ -507,42 +527,49 @@ export default function CityPage() {
               </Link>
             </div>
           ) : (
-            <div className="branch-listings-grid">
+            <div className="listings-grid">
               {filteredListings.map((listing) => {
                 const coverImageUrl = resolveImageUrl(
                   listing.images?.find((image) => image.isCover)?.url || listing.images?.[0]?.url
                 );
 
+                const features = getListingFeatures(listing);
                 return (
-                  <Link key={listing.id} href={`/listings/${listing.id}`} className="branch-listing-card">
+                  <Link key={listing.id} href={`/listings/${listing.id}`} className="listing-card">
                     <div
-                      className="branch-listing-image"
+                      className="listing-image"
                       style={{ backgroundImage: coverImageUrl ? `url('${coverImageUrl}')` : undefined }}
                     >
                       {!coverImageUrl && (
-                        <div className="branch-listing-no-image">
+                        <div className="listing-no-image">
                           <i className="fa-solid fa-image"></i>
                         </div>
                       )}
-                      <span className={`branch-listing-status ${listing.status === "FOR_SALE" ? "sale" : "rent"}`}>
-                        {getStatusLabel(listing.status)}
-                      </span>
-                      {listing.isOpportunity && (
-                        <span className="branch-listing-opportunity">Fırsat</span>
-                      )}
+                      <div className="listing-labels-top">
+                        <span className={`listing-status ${listing.status === "FOR_SALE" ? "for-sale" : "for-rent"}`}>
+                          {getStatusLabel(listing.status)}
+                        </span>
+                        {listing.isOpportunity && (
+                          <span className="listing-opportunity">Fırsat</span>
+                        )}
+                      </div>
+                      {listing.listingNo && <span className="listing-no">#{listing.listingNo}</span>}
                     </div>
-                    <div className="branch-listing-content">
-                      <div className="branch-listing-price">
+                    <div className="listing-info">
+                      <div className="listing-price-tag">
                         {formatPrice(listing.price)}
                       </div>
-                      <h3 className="branch-listing-title">{listing.title}</h3>
-                      <p className="branch-listing-location">
+                      <h3 className="listing-title">{listing.title}</h3>
+                      <p className="listing-location">
                         <i className="fa-solid fa-location-dot"></i>
                         {[listing.district?.name, listing.neighborhood?.name].filter(Boolean).join(", ") || cityName}
                       </p>
-                      <div className="branch-listing-features">
-                        {buildListingFeatures(listing).slice(0, 4).map((feature, idx) => (
-                          <span key={idx}>{feature}</span>
+                      <div className="listing-features">
+                        {features.map((feat, idx) => (
+                          <div key={idx} className="listing-feature" title={feat.title}>
+                            <i className={`fa-solid ${feat.icon}`}></i>
+                            <span>{feat.value}</span>
+                          </div>
                         ))}
                       </div>
                     </div>

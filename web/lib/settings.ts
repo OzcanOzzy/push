@@ -36,6 +36,8 @@ export type SiteSettings = {
   logoSubtitleColor?: string | null;
   logoSubtitleBgColor?: string | null;
   showLogoSubtitle?: boolean | null;
+  // Favicon
+  faviconUrl?: string | null;
   // Profile customization
   profileImageUrl?: string | null;
   profileImageWidth?: number | null;
@@ -160,6 +162,8 @@ export type SiteSettings = {
   mobileLogoAlign?: string | null;
   mobileSocialSize?: number | null;
   mobileSocialShow?: boolean | null;
+  mobileSocialGap?: number | null;
+  mobileSocialPosition?: string | null;
   mobileSearchWidth?: number | null;
   mobileSearchHeight?: number | null;
   mobileSearchShow?: boolean | null;
@@ -177,6 +181,8 @@ export type SiteSettings = {
   mobileActionHeight?: number | null;
   mobileActionFontSize?: number | null;
   mobileActionBorderRadius?: number | null;
+  mobileActionAlign?: string | null;
+  mobileActionWidth?: number | null;
   mobileListingColumns?: number | null;
   mobileListingGap?: number | null;
 };

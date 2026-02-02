@@ -13,10 +13,13 @@ datasource db {
 }
 
 enum Role {
-  ADMIN
-  MANAGER
-  BRANCH_MANAGER
-  CONSULTANT
+  ADMIN            // Tam yetkili admin
+  MANAGER          // Genel yönetici (eski uyumluluk)
+  BROKER           // Yönetici - Broker
+  FIRM_OWNER       // Yönetici - Firma Sahibi
+  REAL_ESTATE_EXPERT // Yönetici - Emlak Uzmanı
+  BRANCH_MANAGER   // Danışman - Şube Müdürü
+  CONSULTANT       // Danışman
 }
 
 enum ListingStatus {
@@ -56,10 +59,15 @@ enum CustomerRequestType {
 model User {
   id           String      @id @default(cuid())
   email        String      @unique
+  username     String?     @unique  // Kullanıcı adı (opsiyonel, email yerine login için)
   passwordHash String
   name         String
   role         Role
   isActive     Boolean     @default(true)
+  photoUrl     String?     // Profil fotoğrafı
+  phone        String?     // Telefon
+  whatsapp     String?     // WhatsApp numarası
+  title        String?     // Ünvan (Danışman, Şube Müdürü, Broker vb.)
   consultant   Consultant?
   listings     Listing[]   @relation("ListingsCreatedBy")
   consultantRequestsCreated ConsultantRequest[] @relation("ConsultantRequestsCreatedBy")
@@ -89,16 +97,38 @@ model Branch {
   name           String
   slug           String      @unique
   cityId         String
+  districtId     String?     // İlçe bazlı şube için (opsiyonel)
   address        String?
   photoUrl       String?
   phone          String?
   whatsappNumber String?
   email          String?
+  mapUrl         String?     // Google Maps embed URL
+  workingHours   String?     // Çalışma saatleri
   city           City        @relation(fields: [cityId], references: [id])
+  district       District?   @relation(fields: [districtId], references: [id])
   listings       Listing[]
   staff          Consultant[]
+  neighborhoods  BranchNeighborhood[]  // Şubenin hizmet verdiği mahalleler
   createdAt      DateTime    @default(now())
   updatedAt      DateTime    @updatedAt
+
+  @@index([cityId])
+  @@index([districtId])
+}
+
+// Şube-Mahalle ilişkisi (çoka-çok)
+model BranchNeighborhood {
+  id             String       @id @default(cuid())
+  branchId       String
+  neighborhoodId String
+  branch         Branch       @relation(fields: [branchId], references: [id], onDelete: Cascade)
+  neighborhood   Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@unique([branchId, neighborhoodId])
+  @@index([branchId])
+  @@index([neighborhoodId])
 }
 
 model City {
@@ -110,6 +140,8 @@ model City {
   branches      Branch[]
   listings      Listing[]
   customerRequests CustomerRequest[]
+  valuationRequests ValuationRequest[]
+  propertyRequests PropertyRequest[]
   cityButtons   CityButton[]
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
@@ -122,8 +154,11 @@ model District {
   cityId        String
   city          City           @relation(fields: [cityId], references: [id])
   neighborhoods Neighborhood[]
+  branches      Branch[]
   listings      Listing[]
   customerRequests CustomerRequest[]
+  valuationRequests ValuationRequest[]
+  propertyRequests PropertyRequest[]
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
@@ -137,31 +172,69 @@ model Neighborhood {
   slug       String
   cityId     String
   districtId String
+  
+  // Koordinatlar (merkez noktası)
+  latitude   Decimal? @db.Decimal(9, 6)
+  longitude  Decimal? @db.Decimal(9, 6)
+  
   city       City     @relation(fields: [cityId], references: [id])
   district   District @relation(fields: [districtId], references: [id])
   listings   Listing[]
   customerRequests CustomerRequest[]
+  valuationRequests ValuationRequest[]
+  propertyRequests PropertyRequest[]
+  branchNeighborhoods BranchNeighborhood[]
+  
+  // Komşu mahalle ilişkileri
+  neighborsFrom NeighborhoodNeighbor[] @relation("NeighborhoodFrom")
+  neighborsTo   NeighborhoodNeighbor[] @relation("NeighborhoodTo")
+  
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
   @@index([cityId, districtId])
+  @@index([latitude, longitude])
   @@unique([districtId, slug])
+}
+
+// Komşu mahalle ilişkisi (mesafe bazlı)
+model NeighborhoodNeighbor {
+  id               String       @id @default(cuid())
+  neighborhoodId   String       // Ana mahalle
+  neighborId       String       // Komşu mahalle
+  distance         Float        // Mesafe (km)
+  
+  neighborhood     Neighborhood @relation("NeighborhoodFrom", fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  neighbor         Neighborhood @relation("NeighborhoodTo", fields: [neighborId], references: [id], onDelete: Cascade)
+  
+  createdAt        DateTime     @default(now())
+
+  @@unique([neighborhoodId, neighborId])
+  @@index([neighborhoodId])
+  @@index([neighborId])
+  @@index([distance])
 }
 
 model Listing {
   id              String          @id @default(cuid())
+  listingNo       String          @unique // 5 haneli numara: 00001, 00002, ...
   title           String
   description     String
   status          ListingStatus
   category        ListingCategory
-  propertyType    String?
+  subPropertyType String?         // Alt kategori: APART, DAIRE, KONUT_ARSASI, DUKKAN vb.
   price           Decimal?        @db.Decimal(12, 2)
   currency        String          @default("TRY")
   areaGross       Decimal?        @db.Decimal(10, 2)
   areaNet         Decimal?        @db.Decimal(10, 2)
+  
+  // Konum bilgileri
   latitude        Decimal?        @db.Decimal(9, 6)
   longitude       Decimal?        @db.Decimal(9, 6)
-  attributes      Json?
+  hideLocation    Boolean         @default(false) // Konumu gizle
+  googleMapsUrl   String?         // Google Maps link'i
+  
+  attributes      Json?           // Dinamik özellikler (kategori bazlı)
   isOpportunity   Boolean         @default(false)
   branchId        String
   cityId          String
@@ -182,6 +255,11 @@ model Listing {
   canonicalUrl    String?
   ogImage         String?
 
+  // Video & Sanal Tur
+  videoUrl        String?
+  virtualTourUrl  String?
+  virtualTourType String?         // MATTERPORT, IFRAME, YOUTUBE_360
+
   branch          Branch          @relation(fields: [branchId], references: [id])
   city            City            @relation(fields: [cityId], references: [id])
   district        District?       @relation(fields: [districtId], references: [id])
@@ -193,23 +271,30 @@ model Listing {
   @@index([status, cityId])
   @@index([branchId])
   @@index([slug])
+  @@index([listingNo])
 }
 
 model ListingAttributeDefinition {
-  id         String               @id @default(cuid())
-  category   ListingCategory
-  key        String
-  label      String
-  type       ListingAttributeType
-  options    Json?
-  allowsMultiple Boolean          @default(false)
-  isRequired Boolean              @default(false)
-  sortOrder  Int                  @default(0)
-  createdAt  DateTime             @default(now())
-  updatedAt  DateTime             @updatedAt
+  id             String               @id @default(cuid())
+  status         ListingStatus?       // null = her iki durum için de geçerli
+  category       ListingCategory
+  subPropertyType String?             // null = tüm alt tipler için geçerli, değilse sadece o tip için
+  key            String
+  label          String
+  type           ListingAttributeType
+  options        Json?                // SELECT tipi için seçenekler
+  allowsMultiple Boolean              @default(false)
+  isRequired     Boolean              @default(false)
+  sortOrder      Int                  @default(0)
+  groupName      String?              // Özellik grubu adı (görsel gruplama için)
+  placeholder    String?              // Input placeholder
+  suffix         String?              // Değer sonuna eklenecek (m², TL vb.)
+  helpText       String?              // Yardım metni
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
 
-  @@unique([category, key])
-  @@index([category, sortOrder])
+  @@unique([status, category, subPropertyType, key])
+  @@index([status, category, subPropertyType, sortOrder])
 }
 
 model ListingImage {
@@ -218,8 +303,15 @@ model ListingImage {
   url       String
   isCover   Boolean  @default(false)
   sortOrder Int      @default(0)
-  listing   Listing  @relation(fields: [listingId], references: [id])
+  listing   Listing  @relation(fields: [listingId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+}
+
+// Otomatik ilan numarası için sayaç
+model ListingCounter {
+  id        String   @id @default("default")
+  lastNumber Int     @default(0)
+  updatedAt DateTime @updatedAt
 }
 
 model CustomerRequest {
@@ -242,6 +334,86 @@ model CustomerRequest {
   neighborhood Neighborhood?       @relation(fields: [neighborhoodId], references: [id])
 
   @@index([status])
+}
+
+// Değerleme Talebi - "Evim Ne Kadar Eder" formu
+model ValuationRequest {
+  id              String              @id @default(cuid())
+  // Müşteri Bilgileri (Zorunlu)
+  fullName        String
+  phone           String
+  email           String?
+  // Konum Bilgileri (Zorunlu)
+  cityId          String
+  districtId      String
+  neighborhoodId  String
+  // Mülk Bilgileri
+  listingStatus   ListingStatus       // Satılık/Kiralık
+  category        ListingCategory     // Konut, Arsa, Ticari vb.
+  subPropertyType String?             // Alt kategori
+  attributes      Json?               // Dinamik özellikler (oda sayısı, m², vb.)
+  // Medya
+  images          Json?               // Fotoğraf URL'leri
+  videoUrl        String?             // Video URL
+  // Ek Bilgiler
+  notes           String?             // Müşteri notu
+  address         String?             // Açık adres
+  // Durum
+  requestStatus   RequestStatus       @default(NEW)
+  adminNotes      String?             // Admin notları
+  estimatedValue  Decimal?            @db.Decimal(12, 2) // Tahmini değer
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // İlişkiler
+  city            City                @relation(fields: [cityId], references: [id])
+  district        District            @relation(fields: [districtId], references: [id])
+  neighborhood    Neighborhood        @relation(fields: [neighborhoodId], references: [id])
+
+  @@index([requestStatus])
+  @@index([createdAt])
+  @@index([category])
+}
+
+// Satış/Kiralama Talebi - "Satmak/Kiralamak İstiyorum" formu
+model PropertyRequest {
+  id              String              @id @default(cuid())
+  // Müşteri Bilgileri (Zorunlu)
+  fullName        String
+  phone           String
+  email           String?
+  // Konum Bilgileri (Zorunlu)
+  cityId          String
+  districtId      String
+  neighborhoodId  String
+  // Talep Tipi
+  requestType     String              // "SELL" veya "RENT_OUT"
+  // Mülk Bilgileri
+  listingStatus   ListingStatus       // Satılık/Kiralık
+  category        ListingCategory     // Konut, Arsa, Ticari vb.
+  subPropertyType String?             // Alt kategori
+  attributes      Json?               // Dinamik özellikler (oda sayısı, m², vb.)
+  // Medya
+  images          Json?               // Fotoğraf URL'leri
+  videoUrl        String?             // Video URL
+  // Ek Bilgiler
+  notes           String?             // Müşteri notu
+  address         String?             // Açık adres
+  // Durum
+  requestStatus   RequestStatus       @default(NEW)
+  adminNotes      String?             // Admin notları
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+
+  // İlişkiler
+  city            City                @relation(fields: [cityId], references: [id])
+  district        District            @relation(fields: [districtId], references: [id])
+  neighborhood    Neighborhood        @relation(fields: [neighborhoodId], references: [id])
+
+  @@index([requestStatus])
+  @@index([createdAt])
+  @@index([category])
+  @@index([requestType])
 }
 
 model ConsultantRequest {
@@ -308,6 +480,9 @@ model SiteSetting {
   logoSubtitleColor    String?
   logoSubtitleBgColor  String?
   showLogoSubtitle     Boolean @default(true)
+
+  // Favicon
+  faviconUrl           String?
 
   // Profile section customization
   profileImageUrl     String?
@@ -415,6 +590,8 @@ model SiteSetting {
   mobileLogoAlign            String?
   mobileSocialSize           Int?
   mobileSocialShow           Boolean @default(true)
+  mobileSocialGap            Int?
+  mobileSocialPosition       String?
   mobileSearchWidth          Int?
   mobileSearchHeight         Int?
   mobileSearchShow           Boolean @default(true)
@@ -432,8 +609,52 @@ model SiteSetting {
   mobileActionHeight         Int?
   mobileActionFontSize       Int?
   mobileActionBorderRadius   Int?
+  mobileActionAlign          String?
+  mobileActionWidth          Int?
   mobileListingColumns       Int?
   mobileListingGap           Int?
+
+  // SEO Settings
+  metaTitle              String?
+  metaDescription        String?
+  metaKeywords           String?
+  ogImage                String?
+  ogType                 String?
+  twitterHandle          String?
+  canonicalUrl           String?
+
+  // Analytics
+  googleAnalyticsId      String?
+  googleTagManagerId     String?
+  facebookPixelId        String?
+
+  // Schema.org
+  schemaOrgType          String?
+  schemaOrgName          String?
+  schemaOrgDescription   String?
+  schemaOrgAddress       String?
+  schemaOrgCity          String?
+  schemaOrgRegion        String?
+  schemaOrgPostalCode    String?
+  schemaOrgCountry       String?
+  schemaOrgTelephone     String?
+  schemaOrgPriceRange    String?
+  schemaOrgOpeningHours  String?
+
+  // Verification
+  googleSiteVerification String?
+  bingSiteVerification   String?
+  yandexVerification     String?
+
+  // Değerleme Sayfası SEO
+  valuationPageTitle       String?
+  valuationPageDescription String?
+  valuationPageSlug        String?
+
+  // Satış/Kiralama Sayfası SEO
+  propertyRequestPageTitle       String?
+  propertyRequestPageDescription String?
+  propertyRequestPageSlug        String?
 }
 
 // Dynamic footer items - for multiple addresses, phones, etc.

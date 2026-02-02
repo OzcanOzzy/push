@@ -153,6 +153,11 @@ export class UpdateSettingsDto {
   @IsBoolean()
   showLogoSubtitle?: boolean;
 
+  // Favicon
+  @IsOptional()
+  @IsString()
+  faviconUrl?: string;
+
   // Profile section customization
   @IsOptional()
   @IsString()
@@ -594,6 +599,14 @@ export class UpdateSettingsDto {
 
   @IsOptional()
   @IsNumber()
+  mobileSocialGap?: number;
+
+  @IsOptional()
+  @IsString()
+  mobileSocialPosition?: string;
+
+  @IsOptional()
+  @IsNumber()
   mobileSearchWidth?: number;
 
   @IsOptional()
@@ -659,6 +672,14 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsNumber()
   mobileActionBorderRadius?: number;
+
+  @IsOptional()
+  @IsString()
+  mobileActionAlign?: string;
+
+  @IsOptional()
+  @IsNumber()
+  mobileActionWidth?: number;
 
   @IsOptional()
   @IsNumber()

@@ -166,13 +166,13 @@ export default function ContactPage() {
               kullanabilirsiniz.
             </p>
             <div style={{ display: "grid", gap: 12 }}>
-              <Link href="/requests/customer?type=SELL" className="btn btn-outline">
+              <Link href="/satilik-kiralik-talep?type=SELL" className="btn btn-outline">
                 Satmak İstiyorum
               </Link>
-              <Link href="/requests/customer?type=RENT" className="btn btn-outline">
+              <Link href="/satilik-kiralik-talep?type=RENT_OUT" className="btn btn-outline">
                 Kiraya Vermek İstiyorum
               </Link>
-              <Link href="/requests/customer?type=VALUATION" className="btn btn-outline">
+              <Link href="/evim-ne-kadar-eder" className="btn btn-outline">
                 Değerleme İstiyorum
               </Link>
             </div>
